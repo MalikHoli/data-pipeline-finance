@@ -8,7 +8,6 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 #Explicitly load .env
 load_dotenv(BASE_DIR/".env")
 
-# Configuration
 #  Database
 DB_HOST = os.getenv("DB_HOST","localhost")
 DB_PORT = int(os.getenv("DB_PORT","5234"))
@@ -17,6 +16,10 @@ DB_WRITE_USER = os.getenv("DB_WRITE_USER")
 DB_READ_USER = os.getenv("DB_READ_USER")
 
 #  pdf paths
-BANK_STATEMENT_PDF = os.getenv("BANK_STATEMENT_PDF")
-VEST_STATEMENT_PDF = os.getenv("VEST_STATEMENT_PDF")
-INDMONEY_STATEMENT_PDF = os.getenv("INDMONEY_STATEMENT_PDF")
+BANK_STATEMENT_DIRECTORY = os.getenv("BANK_STATEMENT_DIRECTORY")
+VEST_STATEMENT_DIRECTORY = os.getenv("VEST_STATEMENT_DIRECTORY")
+INDMONEY_STATEMENT_DIRECTORY = os.getenv("INDMONEY_STATEMENT_DIRECTORY")
+
+# google speadsheet
+GSPREAD_SERVICE_ACCOUNT_FILE = os.getenv("GSPREAD_SERVICE_ACCOUNT_FILE")
+INVESTMENT_SHEET_ID = os.getenv("INVESTMENT_SHEET_ID")
