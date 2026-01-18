@@ -1,7 +1,6 @@
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from src.common.logging import logger
-from googleapiclient.errors import GoogleAPIError
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -33,10 +32,10 @@ def get_sheets_service(service_account_file: str):
         logger.error("Service account file not found", exc_info=True)
         raise # Re-raise so caller knows this is a hard failure
 
-    except GoogleAPIError:
-        # Google-side failure (auth, permissions, quota, API issues)
-        logger.error("Google API error while creating Sheets service", exc_info=True)
-        raise
+    # except GoogleAPIError:
+    #     # Google-side failure (auth, permissions, quota, API issues)
+    #     logger.error("Google API error while creating Sheets service", exc_info=True)
+    #     raise
 
     except Exception:
         # Safety net for unexpected bugs; should never be silent

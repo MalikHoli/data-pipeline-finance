@@ -122,7 +122,7 @@ def transform_mutual_fund_statement(
     # ----------------------------------
     logger.info("Loading mutual_fund_names mapping table")
     mf_name_mapping = pd.read_sql(
-        "SELECT mf_name, mf_name_spreadsheet FROM mutual_fund_names",
+        "SELECT * FROM mutual_fund_names",
         engine,
     )
 
@@ -143,7 +143,7 @@ def transform_mutual_fund_statement(
         right_on="mf_name",
         how="left",
     )
-
+ 
     df = (
         df[df["mf_name_spreadsheet"].notna()]
         .drop(columns=["mf_name"])
@@ -235,11 +235,17 @@ def transform_mutual_fund_statement(
         df["Invested Value\n(INR)"]
     )
 
-    df["Investment Amount"] = np.where(
-        df["investment_value_flag"] == "X",
-        invested_value.round(0),
-        invested_value.apply(_round_investment_amount),
-    ).astype("Int64")
+    df["Investment Amount"] = (
+    pd.Series(
+        np.where(
+            df["investment_value_flag"] == "X",
+            invested_value.round(0),
+            invested_value.apply(_round_investment_amount),
+        ),
+        index=df.index
+    )
+    .astype("Int64")
+    )
 
     # ----------------------------------
     # Final projection
@@ -261,7 +267,7 @@ def transform_mutual_fund_statement(
 
     logger.info(
         "Mutual fund summary transformation completed for period %s | rows=%d",
-        len(month_year,mf_summary_final),
+        month_year,len(mf_summary_final),
     )
 
     return mf_summary_final
