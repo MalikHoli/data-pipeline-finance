@@ -1,9 +1,12 @@
 import pandas as pd
-import re
+
 from src.common.logging import logger
 from src.parsers.excel.kite_holding_period import extract_kite_holding_period
 
-def extract_kite_holding(excel_path: str) -> pd.DataFrame:
+# =========================
+# Main parser
+# =========================
+def extract_kite_holding(excel_path: str) -> tuple[pd.DataFrame, str]:
     if not excel_path:
         logger.error("excel path is not provided")
         raise ValueError("excel path is not provided")
@@ -43,5 +46,10 @@ def extract_kite_holding(excel_path: str) -> pd.DataFrame:
     result = len(holdings_refined_df)
     
     logger.info("Parsed %d lines for %s from kite holding", result,month_year)
-    return holdings_refined_df
+    
+    # month_year is necessary at the transformation layer
+    return (
+    holdings_refined_df,
+    month_year,
+    )
 
