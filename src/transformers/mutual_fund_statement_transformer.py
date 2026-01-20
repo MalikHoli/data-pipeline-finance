@@ -1,17 +1,3 @@
-"""
-Mutual Fund Summary Transformer
-
-Transforms CAS mutual fund summary extract into a normalized,
-analytics-ready dataframe suitable for storage and dashboards.
-
-Author: Your Name
-Created: YYYY-MM-DD
-
-IMPORTANT:
-- This module contains NO side effects (no writes)
-- It is safe to re-run on historical data
-"""
-
 from src.common.logging import logger
 from typing import Final
 

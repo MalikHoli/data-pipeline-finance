@@ -4,11 +4,6 @@ from calendar import monthrange
 from src.common.logging import logger
 from typing import Final
 
-from src.parsers.excel.kite_holding_period import extract_kite_holding_period
-
-# getting the engine to read data from postgres db
-from src.common.db import get_read_engine
-
 # =========================
 # Constants (schema safety)
 # These variables are intended to be a constant and must not be reassigned.
@@ -43,15 +38,25 @@ def _derive_month_end_date(
 # =========================
 def transform_kite_holding(
         kite_holding_extract: pd.DataFrame,
-        month_year: str
+        month_year: str,
+        fund_master: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Docstring for transform_kite_holding
-    
-    :param kite_holding_extract: Description
-    :type kite_holding_extract: pd.DataFrame
-    :return: Description
-    :rtype: DataFrame
+    Transforms raw kite holdings extract into final schema.
+
+    Parameters
+    ----------
+    kite_holding_extract : pd.DataFrame
+        Output dataframe from kite_holding parser
+    month_year
+        The period for which this kite holding information belongs to
+    fund_master
+        The dataframe fetched from the postgres
+
+    Returns
+    -------
+    pd.DataFrame
+        Final transformed dataframe ready for persistence or analytics
     """
     if not month_year:
         logger.error(
@@ -77,10 +82,39 @@ def transform_kite_holding(
     ).dt.days
 
     # ----------------------------------
+    # Data safety & validation
+    # ----------------------------------
+    REQUIRED_COLUMNS = {
+        "Quantity Available",
+        "Previous Closing Price",
+        "Average Price",
+        "Symbol",
+    }
+
+    missing = REQUIRED_COLUMNS - set(kite_holding_extract.columns)
+
+    if missing:
+        logger.error("Missing required columns: %s", missing)
+        raise ValueError(f"Missing required columns: {missing}")
+
+    # ----------------------------------
     # "Current Value" column
     # ----------------------------------
+    prev_close = pd.to_numeric(
+    kite_holding_extract["Previous Closing Price"],
+    errors="coerce"
+    )
+
+    if prev_close.isna().any():
+        logger.warning(
+            "Found non-numeric 'Previous Closing Price' values; coercing to NaN and filling with 0"
+        )
+
+    # Convert NaN to 0 AFTER warning
+    prev_close = prev_close.fillna(0)
+
     kite_holding_extract["Current Value"] = (
-    kite_holding_extract["Quantity Available"]*pd.to_numeric(kite_holding_extract["Previous Closing Price"])
+    kite_holding_extract["Quantity Available"]*prev_close
     .round(0)
     .astype("Int64")   # nullable integer
     )
@@ -88,8 +122,21 @@ def transform_kite_holding(
     # ----------------------------------
     # "Investment Amount" column
     # ----------------------------------
+    avg_price = pd.to_numeric(
+    kite_holding_extract["Average Price"],
+    errors="coerce"
+    )
+
+    if avg_price.isna().any():
+        logger.warning(
+            "Found non-numeric 'Average Price' values; coercing to NaN and filling with 0"
+        )
+
+    # Convert NaN to 0 AFTER warning
+    avg_price = avg_price.fillna(0)
+
     kite_holding_extract["Investment Amount"] = (
-    kite_holding_extract["Quantity Available"]*pd.to_numeric(kite_holding_extract["Average Price"])
+    kite_holding_extract["Quantity Available"]*avg_price
     .round(0)
     .astype("Int64")   # nullable integer
     )
@@ -97,22 +144,21 @@ def transform_kite_holding(
     # to remove practically non-possible records
     kite_holding_extract = kite_holding_extract[kite_holding_extract["Current Value"] > 0]
 
-    engine = get_read_engine()
-
-    # ----------------------------------
-    # Load reference / dimension tables
-    # ----------------------------------
-    logger.info("Loading fund_master_data dimension table")
-    fund_master = pd.read_sql(
-        "SELECT * FROM fund_master_data",
-        engine,
-    )
-
     # ----------------------------------
     # Attach fund dimensions
     # ----------------------------------
     logger.info("getting other attributes of stocks using fund_master_data table")
-    kite_holdings_refined_df = pd.merge(kite_holding_extract, fund_master, left_on='Symbol',right_on='fund_name', how='left')
+    kite_holdings_refined_df = pd.merge(
+                                            kite_holding_extract, 
+                                            fund_master, 
+                                            left_on='Symbol',
+                                            right_on='fund_name', 
+                                            how='left',
+                                        )
+
+    unmatched = kite_holdings_refined_df["investment_category"].isna().sum()
+    if unmatched:
+        logger.warning("Unmatched symbols in fund_master_data: %d", unmatched)
 
     # ----------------------------------
     # Rearrange required columns
