@@ -8,6 +8,9 @@ from src.sinks.google_sheets.client import get_sheets_service
 from src.sinks.google_sheets.writer import append_rows
 from src.common.logging import logger
 
+# getting the engine to read data from postgres db
+from src.common.db import get_read_engine
+
 from src.common.config import (
     GSPREAD_SERVICE_ACCOUNT_FILE,
     INVESTMENT_SHEET_ID,
@@ -49,7 +52,10 @@ def dataframe_to_rows(
     return rows
 
 
-def run(pdf_path: Path) -> None:
+def run(
+        pdf_path: Path,
+        dry_run: bool = False,
+) -> None:
     """
     Runs the MF summary → Google Sheets pipeline for a single CAS PDF.
 
@@ -64,8 +70,25 @@ def run(pdf_path: Path) -> None:
     # 1. Parse
     mf_statement_extract = extract_mutual_fund_statement(pdf_path)
 
+    # ----------------------------------
+    # Load reference / dimension tables
+    # ----------------------------------
+    engine = get_read_engine()
+    
+    logger.info("Loading mutual_fund_names mapping table")
+    mf_name_mapping = pd.read_sql(
+        "SELECT * FROM mutual_fund_names",
+        engine,
+    )
+
+    logger.info("Loading fund_master_data dimension table")
+    fund_master = pd.read_sql(
+        "SELECT * FROM fund_master_data",
+        engine,
+    )
+
     # 2. Transform
-    mf_statement_transformed_final = transform_mutual_fund_statement(mf_statement_extract)
+    mf_statement_transformed_final = transform_mutual_fund_statement(mf_statement_extract,mf_name_mapping,fund_master)
 
     if mf_statement_transformed_final.empty:
         logger.warning("No data produced by transformer; skipping Sheets write")
@@ -76,6 +99,16 @@ def run(pdf_path: Path) -> None:
         mf_statement_transformed_final,
     )
 
+    # ----------------------------------
+    # DRY RUN guard
+    # ----------------------------------
+    if dry_run:
+        logger.info(
+            "[DRY RUN] %d rows prepared for Google Sheets. No data written.",
+            len(rows),
+        )
+        return
+    
     # 4. Initialize Sheets service
     sheets_service = get_sheets_service(SERVICE_ACCOUNT_FILE)
 

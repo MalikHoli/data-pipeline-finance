@@ -37,7 +37,10 @@ def dataframe_to_rows(df: pd.DataFrame) -> list[list]:
 # =========================
 # Main pipeline
 # =========================
-def run(excel_path: Path, dry_run: bool = False) -> None:
+def run(
+        excel_path: Path, 
+        dry_run: bool = False,
+) -> None:
     """
     Runs the kite holding xlsx → Google Sheets pipeline.
 

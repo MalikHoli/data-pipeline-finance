@@ -48,10 +48,10 @@ def transform_kite_holding(
     ----------
     kite_holding_extract : pd.DataFrame
         Output dataframe from kite_holding parser
-    month_year
+    month_year : str
         The period for which this kite holding information belongs to
-    fund_master
-        The dataframe fetched from the postgres
+    fund_master : pd.DataFrame
+        The dataframe fetched from the postgres having the all the attributes of fund necessary to store in google sheet
 
     Returns
     -------

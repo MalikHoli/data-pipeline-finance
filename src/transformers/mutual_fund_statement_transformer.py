@@ -4,10 +4,6 @@ from typing import Final
 import numpy as np
 import pandas as pd
 
-# getting the engine to read data from postgres db
-from src.common.db import get_read_engine
-
-
 # =========================
 # Constants (schema safety)
 # These variables are intended to be a constant and must not be reassigned.
@@ -81,6 +77,8 @@ def _derive_month_end_date(nav_date: pd.Series) -> pd.Series:
 
 def transform_mutual_fund_statement(
     mf_summary_extract: pd.DataFrame,
+    mf_name_mapping: pd.DataFrame,
+    fund_master: pd.DataFrame,
 ) -> pd.DataFrame:
     """
     Transforms raw mutual fund CAS summary extract into final schema.
@@ -89,33 +87,21 @@ def transform_mutual_fund_statement(
     ----------
     mf_summary_extract : pd.DataFrame
         Output dataframe from mutual_fund_statement_transactions parser
+    mf_name_mapping : pd.DataFrame
+        The dataframe fetched from the postgres to map statement fund names to one suitable for google sheet write
+    fund_master : pd.DataFrame
+        The dataframe fetched from the postgres having the all the attributes of fund necessary to store in google sheet
 
     Returns
     -------
     pd.DataFrame
         Final transformed dataframe ready for persistence or analytics
     """
+    mf_summary_extract_len = len(mf_summary_extract)
 
     logger.info(
         "Starting mutual fund summary transformation | rows=%d",
-        len(mf_summary_extract),
-    )
-
-    engine = get_read_engine()
-
-    # ----------------------------------
-    # Load reference / dimension tables
-    # ----------------------------------
-    logger.info("Loading mutual_fund_names mapping table")
-    mf_name_mapping = pd.read_sql(
-        "SELECT * FROM mutual_fund_names",
-        engine,
-    )
-
-    logger.info("Loading fund_master_data dimension table")
-    fund_master = pd.read_sql(
-        "SELECT * FROM fund_master_data",
-        engine,
+        mf_summary_extract_len,
     )
 
     # ----------------------------------
@@ -129,7 +115,16 @@ def transform_mutual_fund_statement(
         right_on="mf_name",
         how="left",
     )
- 
+
+    # logging warning if any rows are getting removed due to merge
+    removed_rows = df[df["mf_name_spreadsheet"].isna()]["Scheme Details"].unique()
+
+    if len(removed_rows) > 0:
+        logger.warning(
+            "MF summary rows removed due to missing mapping. Schemes: %s",
+            ", ".join(removed_rows)
+        )
+
     df = (
         df[df["mf_name_spreadsheet"].notna()]
         .drop(columns=["mf_name"])
@@ -158,7 +153,17 @@ def transform_mutual_fund_statement(
         left_on="mf_name_spreadsheet",
         right_on="fund_name",
         how="left",
-    ).drop(columns=["mf_name_spreadsheet"])
+    )
+
+    unmatched_rows = df[df["fund_type"].isna()]["mf_name_spreadsheet"]
+
+    df.drop(columns=["mf_name_spreadsheet"])
+
+    if len(unmatched_rows) > 0:
+        logger.warning(
+            "Rows without fund attributes detected. Schemes: %s",
+            ", ".join(unmatched_rows)
+        )
 
     # ----------------------------------
     # Date derivations
