@@ -1,6 +1,7 @@
 import pdfplumber
 import pandas as pd
 import re
+
 from src.common.logging import logger
 from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 
@@ -11,7 +12,7 @@ def extract_vest_detailed_transactions(pdf_path: str) -> pd.DataFrame:
 
     month_year = extract_vest_statement_period(pdf_path)
 
-    logger.info("parsing vest statement for %s",month_year)
+    logger.info("parsing vest transactions for %s",month_year)
     
     # below variable declaration is for readability
     # its same as "Trade Date Settle Date Currency Activity Type Symbol / Description Quantity Price Amount"

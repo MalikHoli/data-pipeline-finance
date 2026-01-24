@@ -1,80 +1,23 @@
-from src.common.logging import logger
-from typing import Final
-
 import numpy as np
 import pandas as pd
 
-# =========================
-# Constants (schema safety)
-# These variables are intended to be a constant and must not be reassigned.
-# =========================
+from src.common.logging import logger
 
-EXCEL_ORIGIN: Final = pd.Timestamp("1899-12-30")
-NAV_DATE_FORMAT: Final = "%d-%b-%Y"
-OUTPUT_DATE_FORMAT: Final = "%d/%m/%Y"
-
-
-# =========================
-# Helper functions
-# =========================
-
-def _clean_currency_column(series: pd.Series) -> pd.Series:
-    """
-    Cleans INR currency strings and converts them to numeric values.
-
-    Handles:
-    - commas
-    - ₹ symbol
-    - whitespace
-    - coercion to NaN on failure
-    """
-    return (
-        series
-        .astype(str)
-        .str.replace(",", "", regex=False)
-        .str.replace("₹", "", regex=False)
-        .str.strip()
-        .pipe(pd.to_numeric, errors="coerce")
-    )
-
-
-def _round_investment_amount(value: float) -> float:
-    """
-    Business rounding rule:
-    - >= 1,00,000 → nearest 1,000
-    - < 1,00,000 → nearest 100
-    """
-    if pd.isna(value):
-        return value
-
-    if value >= 100_000:
-        return int(round(value, -3))
-    return int(round(value, -2))
-
-
-def _derive_month_end_date(nav_date: pd.Series) -> pd.Series:
-    """
-    Converts NAV date to financial month-end date.
-
-    Rule:
-    - NAV day 1-10 → previous month end
-    - NAV day 11+ → current month end
-    """
-    early_days = nav_date.dt.day.between(1, 10)
-
-    return pd.to_datetime(
-        np.where(
-            early_days,
-            nav_date - pd.offsets.MonthEnd(1),
-            nav_date + pd.offsets.MonthEnd(0)
-        )
-    )
-
+# =========================================
+# Importing helper functions and constants
+# =========================================
+from src.transformers.helper import (
+    EXCEL_ORIGIN,
+    NAV_DATE_FORMAT,
+    GSHEET_OUTPUT_DATE_FORMAT,
+    _clean_convert_currency_column_to_numeric,
+    _round_mutual_fund_investment_amount,
+    _derive_month_end_date_for_gsheet_posting,
+)
 
 # =========================
 # Main transformer
 # =========================
-
 def transform_mutual_fund_statement(
     mf_summary_extract: pd.DataFrame,
     mf_name_mapping: pd.DataFrame,
@@ -176,7 +119,7 @@ def transform_mutual_fund_statement(
         errors="coerce",
     )
 
-    df["date"] = _derive_month_end_date(df["NAV Date"])
+    df["date"] = _derive_month_end_date_for_gsheet_posting(df["NAV Date"])
 
     # ----------------------------------
     # deriving the month_year format
@@ -200,9 +143,9 @@ def transform_mutual_fund_statement(
         month_year = "unknown"
     # ----------------------------------
 
-    df["date"] = df["date"].dt.strftime(OUTPUT_DATE_FORMAT)
+    df["date"] = df["date"].dt.strftime(GSHEET_OUTPUT_DATE_FORMAT)
     df["link"] = (
-        pd.to_datetime(df["date"], format=OUTPUT_DATE_FORMAT)
+        pd.to_datetime(df["date"], format=GSHEET_OUTPUT_DATE_FORMAT)
         - EXCEL_ORIGIN
     ).dt.days
 
@@ -212,7 +155,7 @@ def transform_mutual_fund_statement(
     logger.info("cleaning of market value format")
 
     df["Current Value"] = (
-        _clean_currency_column(df["Market Value\n(INR)"])
+        _clean_convert_currency_column_to_numeric(df["Market Value\n(INR)"])
         .round(0)
         .astype("Int64")
     )
@@ -222,7 +165,7 @@ def transform_mutual_fund_statement(
     # ----------------------------------
     logger.info("cleaning of invested value format")
 
-    invested_value = _clean_currency_column(
+    invested_value = _clean_convert_currency_column_to_numeric(
         df["Invested Value\n(INR)"]
     )
 
@@ -231,7 +174,7 @@ def transform_mutual_fund_statement(
         np.where(
             df["investment_value_flag"] == "X",
             invested_value.round(0),
-            invested_value.apply(_round_investment_amount),
+            invested_value.apply(_round_mutual_fund_investment_amount),
         ),
         index=df.index
     )

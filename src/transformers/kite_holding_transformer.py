@@ -1,37 +1,15 @@
 import pandas as pd
-from calendar import monthrange
 
 from src.common.logging import logger
-from typing import Final
 
-# =========================
-# Constants (schema safety)
-# These variables are intended to be a constant and must not be reassigned.
-# =========================
-EXCEL_ORIGIN: Final = pd.Timestamp("1899-12-30")
-OUTPUT_DATE_FORMAT: Final = "%d/%m/%Y"
-
-# =========================
-# Helper functions
-# =========================
-def _derive_month_end_date(
-        month_year: str,
-        ) -> str:
-    month_str, year_str = month_year.split("/")
-    month = int(month_str)
-    year = int(year_str)
-    
-    # Get actual last day of the month
-    last_day = monthrange(year, month)[1]
-
-    # Apply rule:
-    # - February → actual last day (28/29)
-    # - Other months → always 30
-    final_day = last_day if month == 2 else 30
-
-    final_date = pd.Timestamp(year, month, final_day).strftime(OUTPUT_DATE_FORMAT)
-
-    return final_date
+# =========================================
+# Importing helper functions and constants
+# =========================================
+from src.transformers.helper import (
+    _kite_derive_month_end_date_for_gsheet_posting,
+    GSHEET_OUTPUT_DATE_FORMAT,
+    EXCEL_ORIGIN,
+)
 
 # =========================
 # Main transformer
@@ -68,16 +46,16 @@ def transform_kite_holding(
     # ----------------------------------
     logger.info("Deriving reporting date and google spreadsheet link")
 
-    kite_holding_date = _derive_month_end_date(month_year)
+    kite_holding_date = _kite_derive_month_end_date_for_gsheet_posting(month_year)
 
     kite_holding_extract["date"] = pd.to_datetime(
         kite_holding_date,
-        format=OUTPUT_DATE_FORMAT,
+        format=GSHEET_OUTPUT_DATE_FORMAT,
         errors="coerce",
     )
 
     kite_holding_extract["link"] = (
-        pd.to_datetime(kite_holding_extract["date"], format=OUTPUT_DATE_FORMAT)
+        pd.to_datetime(kite_holding_extract["date"], format=GSHEET_OUTPUT_DATE_FORMAT)
         - EXCEL_ORIGIN
     ).dt.days
 

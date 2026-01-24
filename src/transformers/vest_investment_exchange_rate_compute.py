@@ -1,61 +1,15 @@
 import pandas as pd
-import re
-from typing import Final
 
 from src.common.logging import logger
 
-# =========================
-# Constants (schema safety)
-# These variables are intended to be a constant and must not be reassigned.
-# =========================
-VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_START: Final = "NRS/USD"
-VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_END: Final = "@"
-
-# =========================
-# Helper functions
-# =========================
-def _extract_deposit_value_in_USD(
-        series: pd.Series,
-) -> pd.Series:
-    """
-    Extracts USD deposit amount from Vest transaction remarks.
-    
-    Rule:
-    - Extract string between NRS/USD and @
-    - convert the string to numeric
-    """
-    # escape is used as markers may contain regex-special characters later
-    start = re.escape(VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_START)
-    end = re.escape(VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_END)
-
-    pattern = rf"{start}\s*([0-9]+(?:\.[0-9]+)?)\s*{end}"
-
-    return(
-        series
-        .str.extract(pattern)[0]
-        .pipe(pd.to_numeric, errors="coerce")
-    )
-
-def _clean_and_convert_to_numeric_column(
-        series: pd.Series,
-) -> pd.Series:
-    """
-    Cleans currency strings and converts them to numeric values.
-
-    Handles:
-    - commas
-    - ₹ symbol
-    - whitespace
-    - coercion to NaN on failure
-    """
-    return (
-        series
-        .astype(str)
-        .str.replace(",", "", regex=False)
-        .str.replace("₹", "", regex=False)
-        .str.strip()
-        .pipe(pd.to_numeric, errors="coerce")
-    )
+# =========================================
+# Importing helper functions and constants
+# =========================================
+from src.transformers.helper import (
+    VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_START,
+    _extract_deposit_value_in_USD,
+    _clean_convert_currency_column_to_numeric,
+)
 
 # =========================
 # Main transformer
@@ -124,7 +78,7 @@ def transform_vest_statement_to_get_investment_exchange_rate(
 
     df = df.copy()
 
-    df["Withdrawal Amount(INR)_num"] = _clean_and_convert_to_numeric_column(df["Withdrawal Amount(INR)"])
+    df["Withdrawal Amount(INR)_num"] = _clean_convert_currency_column_to_numeric(df["Withdrawal Amount(INR)"])
 
     df["exchange rate"] = (
         df["Withdrawal Amount(INR)_num"] / df["USD Value"]
@@ -170,12 +124,12 @@ def transform_vest_statement_to_get_investment_exchange_rate(
         dayfirst=True,
     ).dt.date
 
-    insert_df["exchange_rate_1_usd_to_inr"] = _clean_and_convert_to_numeric_column(
+    insert_df["exchange_rate_1_usd_to_inr"] = _clean_convert_currency_column_to_numeric(
         insert_df["exchange_rate_1_usd_to_inr"]
     )
-    insert_df["usd_deposit"] = _clean_and_convert_to_numeric_column(
+    insert_df["usd_deposit"] = _clean_convert_currency_column_to_numeric(
         insert_df["usd_deposit"]
     )
-    insert_df["inr_deposit"] = _clean_and_convert_to_numeric_column(
+    insert_df["inr_deposit"] = _clean_convert_currency_column_to_numeric(
         insert_df["inr_deposit"]
     )
