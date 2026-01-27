@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.parsers.pdf.mutual_fund_statement_transactions import extract_mutual_fund_statement
+from src.parsers.pdf.mutual_fund_statement_holdings import extract_mutual_fund_statement
 from src.transformers.mutual_fund_statement_transformer import transform_mutual_fund_statement
 from src.sinks.google_sheets.client import get_sheets_service
 from src.sinks.google_sheets.writer import append_rows

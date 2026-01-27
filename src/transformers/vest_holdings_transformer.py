@@ -12,11 +12,6 @@ from src.transformers.helper import (
 )
 
 # =========================
-# Initializing variables
-# =========================
-columns_to_clean_convert = []
-
-# =========================
 # Main transformer
 # =========================
 def transform_vest_holdings(
@@ -79,7 +74,5 @@ def transform_vest_holdings(
     # ---------------------------------------------------------------------
     # build the helper function for _fetch_usd_to_inr_exch_rate_from_Frankfurter_API
     usd_to_inr_exch_rate = _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(vest_holding_date)
-
-    vest_holdings_transformed_df["exch_rate"] = _clean_convert_currency_column_to_numeric(usd_to_inr_exch_rate)
 
     return vest_holdings_transformed_df

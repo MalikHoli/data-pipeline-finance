@@ -7,7 +7,8 @@ from src.common.logging import logger
 def _loading_to_postgres(
         df: pd.DataFrame,
         POSTGRES_TABLE_NAME: str,
-        get_write_engine: callable[[],Engine],
+        get_write_engine: Callable[[],Engine],
+        dry_run: bool,
 ) -> None:
     """
     this fucntion provides the common format for all loaders
@@ -42,6 +43,18 @@ def _loading_to_postgres(
             "Failed to get the SQLAlchemy write-enabled Postgres engine"
         )
         raise ValueError("Failed to get the SQLAlchemy write-enabled Postgres engine")
+    
+
+    # ----------------------------------
+    # DRY RUN guard
+    # ----------------------------------
+    if dry_run:
+        logger.info(
+            "[DRY RUN] %d rows prepared | postgres table = %s . No data written.",
+            len(df),
+            POSTGRES_TABLE_NAME
+        )
+        return
     
     engine = get_write_engine()
 

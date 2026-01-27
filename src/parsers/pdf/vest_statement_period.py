@@ -5,7 +5,7 @@ from src.common.logging import logger
 
 def extract_vest_statement_period(pdf_path: str) -> str:
     
-    logger.info("Parsing pdf %s",pdf_path)
+    logger.info("Fetching period information from pdf %s",pdf_path)
 
     with pdfplumber.open(pdf_path) as pdf:
         # Extracting first page text from pdf (generally period information present in the 1st page

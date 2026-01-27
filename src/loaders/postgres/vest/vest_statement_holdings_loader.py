@@ -13,6 +13,7 @@ POSTGRES_TABLE_NAME: Final = "vest_summary_statement"
 def load_vest_holdings(
         vest_holdings_transformed_df: pd.DataFrame,
         get_write_engine: Callable[[], Engine],
+        dry_run: bool,
 ) -> None:
     """
     loads the data from vest transformer to postgres    
@@ -24,7 +25,9 @@ def load_vest_holdings(
     get_write_engine
         Zero-argument callable that returns a SQLAlchemy write-enabled
         Postgres engine.
-    
+    dry_run : bool
+        If True, executes full pipeline except postgres write
+        
     Returns
     -------
     None
@@ -35,4 +38,5 @@ def load_vest_holdings(
         vest_holdings_transformed_df,
         POSTGRES_TABLE_NAME,
         get_write_engine,
+        dry_run,
     )

@@ -34,25 +34,28 @@ OUTPUT_DATAFRAME_COLUMNS: Final = [
         "account_type"
 ]
 
-#=============================
-# Initializing variables
-#=============================
-parsed_rows = []
-stop_capture = False
-
 #==================================================================
 # Main Parser 
 #==================================================================
 def extract_vest_holdings(
         pdf_path: str,
+        month_year: str,
 ) -> pd.DataFrame:
+    """
+    To be done
+
+    """
     if not pdf_path:
         logger.error("Pdf path is not provided")
         raise ValueError("Pdf path is not provided")
 
-    month_year = extract_vest_statement_period(pdf_path)
-
     logger.info("parsing vest holdings for %s",month_year)
+
+    #=============================
+    # Initializing variables
+    #=============================
+    parsed_rows = []
+    stop_capture = False
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
