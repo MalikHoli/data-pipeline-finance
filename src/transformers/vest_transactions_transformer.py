@@ -6,8 +6,10 @@ from src.common.logging import logger
 # Importing helper functions and constants
 # =========================================
 from src.transformers.helper import (
-    _allocate_credits_to_transactions,
+    _allocate_wallet_amount_to_transactions,
     _assign_buy_exchange_rates_with_inr_amount,
+    _clean_convert_currency_column_to_numeric,
+    RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT,
 )
 
 # =========================
@@ -49,7 +51,7 @@ def transform_vest_transactions(
     current_statement_month_last_date: str,
         provides the last date of the month for which vest statement holds information
     month_year : str
-        The period for which this vest statement belongs to
+        The period for which this vest statement generated
     
     Returns
     -------
@@ -113,33 +115,72 @@ def transform_vest_transactions(
             month_year,
         )
         
-        return (pd.DataFrame, pd.DataFrame)
+        return (pd.DataFrame(), pd.DataFrame())
     
     # --------------------------------------------------------------------------------------
     # creating new columns and defaulting to False to avoid NaN in upcoming transformation
     # --------------------------------------------------------------------------------------
     vest_buy_transactions_df["free_flag"] = False
-    vest_buy_transactions_df["frcrossover_flagee_flag"] = False
+    vest_buy_transactions_df["crossover_flag"] = False
     
     #------------------------------------------
     # Applying transformations
     # note that loggers are already present in helper functions
     #-------------------------------------------
-    vest_wallet_amount_allocated_df,remaining_balance = _allocate_credits_to_transactions(
+    vest_wallet_amount_allocated_df,remaining_balance = _allocate_wallet_amount_to_transactions(
         vest_wallet_amount_list,
         vest_buy_transactions_df,
         amount_col = "Amount",
-        )
+    )
 
     vest_transactions_transformed_df = _assign_buy_exchange_rates_with_inr_amount(
         vest_wallet_amount_allocated_df,
         vest_wallet_amount_exchg_rate_list,
         amount_col="Amount",
-        )
+    )
+
+    #------------------------------------------
+    # dropping unnecessary column
+    # renaming columns as per postgres schema
+    # formatting of the numrtic columns
+    #------------------------------------------
+    logger.info("cleaning, renaming and formatting as per postgres schema")
+
+    vest_transactions_transformed_df.drop(columns="Settle Date",inplace=True)
     
+    vest_transactions_transformed_df.rename(
+        columns=RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT
+    )
+
+    numeric_columns = ['quantity', 'price', 'amount', 'buy_exch_rate', 'inr_amount']
+
+    vest_transactions_transformed_df[numeric_columns] = (
+        vest_transactions_transformed_df[numeric_columns]
+        .apply(_clean_convert_currency_column_to_numeric)
+        .astype(float)
+    )
+
+    
+    logger.info(
+        "vest transaction table transformed | rows=%d | columns=%s",
+        len(vest_transactions_transformed_df),
+        list(vest_transactions_transformed_df.columns),
+    )
+
     vest_month_end_balance_df = pd.DataFrame(
-        [[current_statement_month_last_date,remaining_balance]],
+        [
+            [
+                current_statement_month_last_date,
+                remaining_balance,
+        ]
+    ],
           columns=["date","balance"],
+    )
+
+    logger.info(
+        "vest month end balance df prepared | rows=%d | columns=%s",
+        len(vest_month_end_balance_df),
+        list(vest_month_end_balance_df.columns)
     )
 
     return  vest_month_end_balance_df,vest_transactions_transformed_df

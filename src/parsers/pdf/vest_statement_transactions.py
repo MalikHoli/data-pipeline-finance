@@ -17,14 +17,14 @@ def extract_vest_detailed_transactions(pdf_path: str) -> pd.DataFrame:
     # below variable declaration is for readability
     # its same as "Trade Date Settle Date Currency Activity Type Symbol / Description Quantity Price Amount"
     text_to_detect_start_of_detailed_transactions = (
-    "Trade Date "
-    "Settle Date " 
-    "Currency "
-    "Activity Type "
-    "Symbol / Description "
-    "Quantity "
-    "Price "
-    "Amount"
+        "Trade Date "
+        "Settle Date " 
+        "Currency "
+        "Activity Type "
+        "Symbol / Description "
+        "Quantity "
+        "Price "
+        "Amount"
     )
 
     # this ensured one more check to sure we are recognizing transaction record
@@ -105,15 +105,15 @@ def extract_vest_detailed_transactions(pdf_path: str) -> pd.DataFrame:
 
     # Dataframe column names
     columns = [
-    "Trade Date",
-    "Settle Date",
-    "Currency",
-    "Activity",
-    "Symbol",
-    "Description",
-    "Quantity",
-    "Price",
-    "Amount"
+        "Trade Date",
+        "Settle Date",
+        "Currency",
+        "Activity",
+        "Symbol",
+        "Description",
+        "Quantity",
+        "Price",
+        "Amount"
     ]
 
     vest_trasaction_df = pd.DataFrame(parsed_rows, columns=columns)

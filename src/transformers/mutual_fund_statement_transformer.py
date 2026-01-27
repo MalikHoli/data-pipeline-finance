@@ -12,7 +12,7 @@ from src.transformers.helper import (
     GSHEET_OUTPUT_DATE_FORMAT,
     _clean_convert_currency_column_to_numeric,
     _round_mutual_fund_investment_amount,
-    _derive_month_end_date_for_gsheet_posting,
+    _derive_month_end_date_from_NAV_for_gsheet_posting,
 )
 
 # =========================
@@ -119,7 +119,7 @@ def transform_mutual_fund_statement(
         errors="coerce",
     )
 
-    df["date"] = _derive_month_end_date_for_gsheet_posting(df["NAV Date"])
+    df["date"] = _derive_month_end_date_from_NAV_for_gsheet_posting(df["NAV Date"])
 
     # ----------------------------------
     # deriving the month_year format

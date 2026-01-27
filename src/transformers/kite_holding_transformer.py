@@ -6,7 +6,7 @@ from src.common.logging import logger
 # Importing helper functions and constants
 # =========================================
 from src.transformers.helper import (
-    _kite_derive_month_end_date_for_gsheet_posting,
+    _derive_month_end_date_for_gsheet_posting,
     GSHEET_OUTPUT_DATE_FORMAT,
     EXCEL_ORIGIN,
 )
@@ -46,7 +46,7 @@ def transform_kite_holding(
     # ----------------------------------
     logger.info("Deriving reporting date and google spreadsheet link")
 
-    kite_holding_date = _kite_derive_month_end_date_for_gsheet_posting(month_year)
+    kite_holding_date = _derive_month_end_date_for_gsheet_posting(month_year)
 
     kite_holding_extract["date"] = pd.to_datetime(
         kite_holding_date,

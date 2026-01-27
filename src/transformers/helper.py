@@ -3,6 +3,7 @@ import numpy as np
 from calendar import monthrange
 import re
 from decimal import Decimal
+import requests
 
 from src.common.logging import logger
 
@@ -17,13 +18,22 @@ NAV_DATE_FORMAT: Final = "%d-%b-%Y"
 EXCEL_ORIGIN: Final = pd.Timestamp("1899-12-30")
 VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_START: Final = "NRS/USD"
 VEST_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_END: Final = "@"
+RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Final = {
+       "Trade Date":"trade_date",
+       "Activity":"activity",
+       "Symbol":"symbol",
+       "Description":"description",
+       "Quantity":"quantity",
+       "Price":"price",
+       "Amount":"amount",
+}
 
 #=============================================================
-def _kite_derive_month_end_date_for_gsheet_posting(
+def _derive_month_end_date_for_gsheet_posting(
         month_year: str,
 ) -> str:
     """
-    derive date from kite period(MM/YYYY) which can be used as date while writing to googlesheet
+    derive date from period(MM/YYYY) which can be used as date while writing to googlesheet
 
     Rule:
     - February → actual last day (28/29)
@@ -39,6 +49,30 @@ def _kite_derive_month_end_date_for_gsheet_posting(
     final_day = last_day if month == 2 else 30
 
     final_date = pd.Timestamp(year, month, final_day).strftime(GSHEET_OUTPUT_DATE_FORMAT)
+
+    return final_date
+
+#===============================================================
+def _derive_month_end_date_for_postgres_posting(
+        month_year: str,
+) -> str:
+    """
+    derive date from period(MM/YYYY) which can be used as date while writing to postgres
+
+    Rule:
+    - February → actual last day (28/29)
+    - Other months → always 30
+    """
+    month_str, year_str = month_year.split("/")
+    month = int(month_str)
+    year = int(year_str)
+    
+    # Get actual last day of the month
+    last_day = monthrange(year, month)[1]
+
+    final_day = last_day if month == 2 else 30
+
+    final_date = pd.Timestamp(year, month, final_day).strftime(POSTGRES_OUTPUT_DATE_FORMAT)
 
     return final_date
 
@@ -62,6 +96,11 @@ def _clean_convert_currency_column_to_numeric(
         .str.replace("₹", "", regex=False)
         .str.replace("$", "", regex=False)
         .str.strip()
+        .str.replace(
+            r"^\((.*)\)$",     # Match values fully wrapped in parentheses
+            r"-\1",            # Replace with negative sign
+            regex=True
+    )
         .pipe(pd.to_numeric, errors="coerce")
     )
 
@@ -82,7 +121,7 @@ def _round_mutual_fund_investment_amount(
     return int(round(value, -2))
 
 #=============================================================
-def _derive_month_end_date_for_gsheet_posting(
+def _derive_month_end_date_from_NAV_for_gsheet_posting(
         nav_date: pd.Series,
 ) -> pd.Series:
     """
@@ -181,7 +220,7 @@ def _derive_vest_statement_dates(
     )
 
 #=====================================================================
-def _allocate_credits_to_transactions(
+def _allocate_wallet_amount_to_transactions(
         vest_wallet_amounts: Sequence[float], #this allows list, tuple, NumPy arrays, etc.
         df: pd.DataFrame, 
         amount_col: str = "Amount",
@@ -198,7 +237,7 @@ def _allocate_credits_to_transactions(
     It simulates real brokerage / ledger behavior where:
     - Vest wallet balances are used to fund buys
     - Buys may exceed wallet balances
-    - Excess buys may be funded by dividends or unknown sources
+    - Excess buys may be funded by dividends or sell transactions sources
 
     The function:
     - Walks through transactions sequentially
@@ -207,8 +246,7 @@ def _allocate_credits_to_transactions(
     - Flags rows that are funded by "free money" (dividends, etc.)
     - Returns both:
         1. Modified DataFrame
-        2. Final remaining balance (positive or negative) used only to
-           approximately reconcile against account statements
+        2. Final remaining balance (positive or negative)
 
 
     PARAMETERS
@@ -438,12 +476,6 @@ def _assign_buy_exchange_rates_with_inr_amount(
     Assigns exchange rates to 'buy_exch_rate' and computes 'inr_amount'
     as buy_exch_rate * amount, rounded to 2 decimal places.
 
-    Key improvements:
-    - Missing flags are created as boolean False → avoids NaN/object dtype
-    - All operations use correct dtypes from start
-    - INR amounts are rounded to 2 decimals
-    - Defensive copy + logging for audit/debug
-
     Parameters
     ----------
     modified_df : pd.DataFrame
@@ -569,3 +601,55 @@ def _assign_buy_exchange_rates_with_inr_amount(
     df["inr_amount"] = pd.to_numeric(df["inr_amount"], errors="coerce").round(2)
 
     return df
+
+#======================================================================
+def _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(
+        date: str,
+) -> float:
+    """
+    Fetches exchage rate information from the free Frankfurter API for passed date
+    fetched exchange rate is rounded to 2 decimal places
+
+    Parameters
+    ----------
+    date: str
+        Input date string pertaining to vest statement date (end date we put in gsheet)
+    
+    Returns
+    -------
+    flat
+        returns the exchange for the passed date string
+    """
+    #--------------------------------------------------
+    # Building API URL dynamically using date
+    #---------------------------------------------------
+    url = f"https://api.frankfurter.dev/v1/{date}?base=USD&symbols=INR"
+
+    #--------------------------------------------------
+    # Calling API
+    # The API returns:
+    # - exchange rate for that date OR
+    # - the nearest previous business day
+    #---------------------------------------------------
+    logger.info("Fetching exchange rate information from Frankfurter API for %s",date)
+
+    try:
+        response = requests.get(url,timeout=10)
+        response.raise_for_status() # this will immediately raise an exception if HTTP status is not 200 (success)
+
+    except requests.HTTPError:
+        logger.error(
+        "HTTP request failed: %s %s",
+        response.status_code,
+        response.text,
+        exc_info=True,
+        )
+        raise
+
+    data = response.json()
+
+    exch_rate = round(float(data["rates"]["INR"]))
+
+    logger.info("Fetched exchange rate info from Frankfurter API for %s | %f",date,exch_rate)
+
+    return exch_rate

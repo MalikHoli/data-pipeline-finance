@@ -40,9 +40,9 @@ OUTPUT_DATAFRAME_COLUMNS: Final = [
 parsed_rows = []
 stop_capture = False
 
-#=============================
+#==================================================================
 # Main Parser 
-#=============================
+#==================================================================
 def extract_vest_holdings(
         pdf_path: str,
 ) -> pd.DataFrame:

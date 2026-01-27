@@ -50,20 +50,3 @@ def append_rows(
             exc_info=True #exc_info=True tells the logger to include the full exception details in the log.
         )
         raise
-
-############ this is temp code to show how to use it##############################################
-# from src.sinks.google_sheets.client import get_sheets_service
-# from src.sinks.google_sheets.writer import append_rows
-# from src.common.config import (
-#     GOOGLE_SHEETS_CREDENTIALS,
-#     INVESTMENT_SHEET_ID,
-# )
-
-# service = get_sheets_service(GOOGLE_SHEETS_CREDENTIALS)
-
-# append_rows(
-#     sheets_service=service,
-#     spreadsheet_id=INVESTMENT_SHEET_ID,
-#     sheet_name="Investment",
-#     rows=sheet_data,
-# )
