@@ -5,12 +5,13 @@ import re
 from src.common.logging import logger
 from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 
-def extract_vest_detailed_transactions(pdf_path: str) -> pd.DataFrame:
+def extract_vest_detailed_transactions(
+        pdf_path: str,
+        month_year: str,
+) -> pd.DataFrame:
     if not pdf_path:
         logger.error("Pdf path is not provided")
         raise ValueError("Pdf path is not provided")
-
-    month_year = extract_vest_statement_period(pdf_path)
 
     logger.info("parsing vest transactions for %s",month_year)
     

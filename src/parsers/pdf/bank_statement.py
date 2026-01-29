@@ -3,12 +3,13 @@ import pandas as pd
 from src.common.logging import logger
 from src.parsers.pdf.bank_statement_period import extract_bank_statement_period
 
-def extract_bank_table_transactions(pdf_path: str) -> pd.DataFrame:
+def extract_bank_table_transactions(
+        pdf_path: str,
+        month_year: str,
+) -> pd.DataFrame:
     if not pdf_path:
         logger.error("Pdf path is not provided")
         raise ValueError("Pdf path is not provided")
-    
-    month_year = extract_bank_statement_period(pdf_path)
 
     logger.info("parsing bank statement for %s",month_year)
 

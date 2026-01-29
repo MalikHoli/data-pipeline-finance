@@ -14,10 +14,10 @@ from src.transformers.helper import (
 # =========================
 # Main transformer
 # =========================
-def transform_vest_statement_to_get_investment_exchange_rate(
+def transform_bank_statement_to_get_investment_exchange_rate(
         bank_statement_df: pd.DataFrame,
         month_year: str,
-):
+)-> pd.DataFrame:
     """
     Transforms raw bank statement to determine the amount deposited in Vest platform for investment
     We have acess to both USD and INR amount based on which exchange rate is calculated
@@ -133,3 +133,5 @@ def transform_vest_statement_to_get_investment_exchange_rate(
     insert_df["inr_deposit"] = _clean_convert_currency_column_to_numeric(
         insert_df["inr_deposit"]
     )
+
+    return insert_df

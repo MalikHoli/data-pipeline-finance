@@ -31,6 +31,7 @@ RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Final = {
 def load_vest_raw_transactions(
         vest_parsed_trasaction_df: pd.DataFrame,
         get_write_engine: Callable[[],Engine],
+        dry_run: bool,
 ) -> None:
     """
     loads the parsed vest pdf to postgres    
@@ -54,12 +55,13 @@ def load_vest_raw_transactions(
 
     # renaming as per postgres_shema
     vest_parsed_trasaction_df.rename(
-        columns=RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT
-        ,inplace=True
+        columns=RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT,
+        inplace=True,
     )
     
     _loading_to_postgres(
         vest_parsed_trasaction_df,
         POSTGRES_TABLE_NAME,
         get_write_engine,
+        dry_run,
     )
