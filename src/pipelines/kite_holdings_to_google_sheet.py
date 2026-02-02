@@ -67,7 +67,7 @@ def run(
     # 2. Load reference data
     # ----------------------------------
     engine = get_read_engine()
-    logger.info("Loading fund_master_data dimension table")
+    logger.info("Fetching fund_master_data dimension table")
 
     fund_master = pd.read_sql(
         "SELECT * FROM fund_master_data",

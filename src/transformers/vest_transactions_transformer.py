@@ -13,20 +13,14 @@ from src.transformers.helper import (
 )
 
 # =========================
-# Initializing variables
-# =========================
-vest_wallet_amount_list = []
-vest_wallet_amount_exchg_rate_list = []
-
-# =========================
 # Main transformer
 # =========================
 def transform_vest_transactions(
         vest_transactions_extract_df: pd.DataFrame,
         prev_month_end_vest_wallet_balance_df: pd.DataFrame,
-        is_prev_month_end_vest_wallet_balance_positive: bool,
         curr_month_vest_wallet_credit_df: pd.DataFrame,
-        vest_wallet_amount_exchg_rate_df: pd.DataFrame,
+        curr_month_credit_amounts_exchg_rate_df: pd.DataFrame,
+        curr_and_Prev_month_credit_amounts_exchg_rate_df: pd.DataFrame,
         current_statement_month_last_date: str,
         month_year: str,
 ) -> tuple[
@@ -42,12 +36,12 @@ def transform_vest_transactions(
         Output dataframe from vest_transactions_parser
     prev_month_end_vest_wallet_balance_df: pd.DataFrame,
         Output dataframe post querying the vest_month_end_balance postgres table
-    is_prev_month_end_vest_wallet_balance_positive: bool
-        This flag provides information whether we have any balance left in vest wallet from pervious month
     curr_month_vest_wallet_credit_df: pd.DataFrame,
         Output dataframe post querying the vest_detailed_statement postgres table for current month vest wallet credits
-    vest_wallet_amount_exchg_rate_df: pd.DataFrame,
-        Output dataframe post querying the vest_usd_to_inr_deposit_exch_rate table for applicable exchange rates
+    curr_month_credit_amounts_exchg_rate_df: pd.DataFrame,
+        Output dataframe post querying the vest_usd_to_inr_deposit_exch_rate table for current statement month deposit
+    curr_and_Prev_month_credit_amounts_exchg_rate_df: pd.DataFrame,
+        Output dataframe post querying the vest_usd_to_inr_deposit_exch_rate table for current statement month deposit as well as previous month
     current_statement_month_last_date: str,
         provides the last date of the month for which vest statement holds information
     month_year : str
@@ -60,6 +54,13 @@ def transform_vest_transactions(
     pd.DataFrame
         Final vest transactions transformed dataframe ready for persistance or analytics
     """
+
+    # =========================
+    # Initializing variables
+    # =========================
+    vest_wallet_amount_list = []
+    vest_wallet_amount_exchg_rate_list = []
+
     if not month_year:
         logger.error(
             "Failed to get the period information in the transformer"
@@ -69,21 +70,24 @@ def transform_vest_transactions(
     # -----------------------------------------------------------
     # Vest wallet amount and respective exchage rate collection
     # -----------------------------------------------------------
-
-    # later check if this complete block can be passed to pipeline?
-    # we should directly get the wallet amount and exchange rate list as argument
     
+    # checking if there is previous positive vest wallet balance from last month 
+    is_prev_month_end_vest_wallet_balance_positive = not (
+        prev_month_end_vest_wallet_balance_df["balance"].isna().all() # checking if there is any valid non null value in column
+        or len(prev_month_end_vest_wallet_balance_df) == 0 # checking if the df is empty
+        or prev_month_end_vest_wallet_balance_df["balance"].sum() <= 0 # checking if balance is -ve
+    )
+
+    # if there is previous month balance then get the respective wallet balance and exchange rates into the list
     if is_prev_month_end_vest_wallet_balance_positive:
-        # prev_month_end_vest_wallet_balance_df["balance"].isna().all() # checking if there is any valid non null value in column
-        # or len(prev_month_end_vest_wallet_balance_df) == 0 # checking if the df is empty
-        # or prev_month_end_vest_wallet_balance_df["balance"].sum() <= 0 # checking if balance is -ve
         vest_wallet_amount_list.extend(prev_month_end_vest_wallet_balance_df["balance"].tolist())
+        vest_wallet_amount_exchg_rate_list.extend(curr_and_Prev_month_credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
     
     # collect current month vest wallet credit amount
     vest_wallet_amount_list.extend(curr_month_vest_wallet_credit_df["amount"].tolist())
 
-    # collect current & previous month vest wallet amount exchange rate
-    vest_wallet_amount_exchg_rate_list.extend(vest_wallet_amount_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
+    # collect current month vest wallet amount exchange rate
+    vest_wallet_amount_exchg_rate_list.extend(curr_month_credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
 
     # ---------------------------------------------------------------
     # Imp checkpoint - each wallet amounts should have respective exchage rate

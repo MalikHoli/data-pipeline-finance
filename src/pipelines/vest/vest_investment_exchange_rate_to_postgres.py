@@ -34,6 +34,8 @@ def run(
         dry_run,
     )
 
+    logger.info("vest invetment amount exchange rate compute pipeline finished successfully | Period: %s", month_year)
+
 
 
 

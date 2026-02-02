@@ -10,9 +10,10 @@ POSTGRES_TABLE_NAME: Final = "vest_month_end_balance"
 # =========================
 # Main loader
 # =========================
-def load_vest_transformed_transactions(
+def load_vest_month_end_balance(
         vest_month_end_balance_df: pd.DataFrame,
         get_write_engine: Callable[[], Engine],
+        dry_run: bool,
 ) -> None:
     """
     loads the data from vest month end balance information to postgres    
@@ -35,4 +36,5 @@ def load_vest_transformed_transactions(
         vest_month_end_balance_df,
         POSTGRES_TABLE_NAME,
         get_write_engine,
+        dry_run,
     )
