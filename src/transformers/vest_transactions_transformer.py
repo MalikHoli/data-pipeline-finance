@@ -80,14 +80,15 @@ def transform_vest_transactions(
 
     # if there is previous month balance then get the respective wallet balance and exchange rates into the list
     if is_prev_month_end_vest_wallet_balance_positive:
-        vest_wallet_amount_list.extend(prev_month_end_vest_wallet_balance_df["balance"].tolist())
+        vest_wallet_amount_list.extend(prev_month_end_vest_wallet_balance_df["balance"].tolist()) # has only previous month balance
+        # below had both current and previous month balance exchange rates
         vest_wallet_amount_exchg_rate_list.extend(curr_and_Prev_month_credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
+    else:
+        # collect current month vest wallet amount exchange rate
+        vest_wallet_amount_exchg_rate_list.extend(curr_month_credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
     
     # collect current month vest wallet credit amount
     vest_wallet_amount_list.extend(curr_month_vest_wallet_credit_df["amount"].tolist())
-
-    # collect current month vest wallet amount exchange rate
-    vest_wallet_amount_exchg_rate_list.extend(curr_month_credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist())
 
     # ---------------------------------------------------------------
     # Imp checkpoint - each wallet amounts should have respective exchage rate
@@ -109,18 +110,32 @@ def transform_vest_transactions(
     # ----------------------------------
     # Vest buy transactions filteration
     # ----------------------------------
-    vest_buy_transactions_df = vest_transactions_extract_df[
-        vest_transactions_extract_df["Activity"].isin(["BUY", "JNLC"])
-    ]
+    vest_buy_transactions_df = (
+        vest_transactions_extract_df[
+            vest_transactions_extract_df["Activity"].isin(["BUY", "JNLC"])
+        ]
+        .copy()
+        .reset_index(drop=True)
+    )
 
     if vest_buy_transactions_df.empty:
         logger.warning(
             "There were no buy transactions in vest statement for preiod %s",
             month_year,
         )
-        
+
         return (pd.DataFrame(), pd.DataFrame())
     
+    #------------------------------------------------------
+    # converting relevent columns to numeric ones
+    #------------------------------------------------------
+    numeric_columns = ['Amount', 'Quantity', 'Price']
+    
+    vest_buy_transactions_df[numeric_columns]=(
+        vest_buy_transactions_df[numeric_columns]
+        .apply(_clean_convert_currency_column_to_numeric)
+    )
+
     # --------------------------------------------------------------------------------------
     # creating new columns and defaulting to False to avoid NaN in upcoming transformation
     # --------------------------------------------------------------------------------------
@@ -152,8 +167,10 @@ def transform_vest_transactions(
 
     vest_transactions_transformed_df.drop(columns="Settle Date",inplace=True)
     
-    vest_transactions_transformed_df.rename(
-        columns=RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT
+    vest_transactions_transformed_df = (
+        vest_transactions_transformed_df.rename(
+            columns=RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT
+        )
     )
 
     numeric_columns = ['quantity', 'price', 'amount', 'buy_exch_rate', 'inr_amount']

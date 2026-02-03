@@ -7,12 +7,15 @@ from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 from src.parsers.pdf.vest_statement_transactions import extract_vest_detailed_transactions
 from src.transformers.vest_transactions_transformer import transform_vest_transactions
 from src.loaders.postgres.vest.vest_month_end_balance_loader import load_vest_month_end_balance
+from src.loaders.postgres.vest.vest_statement_transformed_transaction_loader import load_vest_transformed_transactions
+from src.pipelines.execution_mode import LoadExecutionMode
 
 from src.pipelines.helper import _derive_vest_statement_dates
 
 def run(
         pdf_path: str,
         dry_run: bool = False,
+        load_mode: LoadExecutionMode = LoadExecutionMode.LOAD_ALL,
 )-> None:
     """
     Runs the vest statement pdf → compute month_end_vest_wallet_balance → postgres pipeline.
@@ -23,6 +26,8 @@ def run(
         Path to vest statement pdf
     dry_run : bool
         If True, executes full pipeline except postgres write
+    load_mode: LoadExecutionMode
+        custom LoadExecutionMode that provides the flag whether to load month_end_balance or transformed_transaction or both to postgres
     """
     logger.info("Starting vest month end balance piepline")
     
@@ -208,15 +213,32 @@ def run(
         curr_month_credit_amounts_exchg_rate_df,
         curr_and_Prev_month_credit_amounts_exchg_rate_df,
         current_statement_month_last_date,
+        month_year,
     )
 
     #-----------------------------------------------------------
     # finally the loader to load data to postgres
     #-----------------------------------------------------------
-    load_vest_month_end_balance(
-        vest_month_end_balance_df,
-        get_write_engine,
-        dry_run,
-    )
+    if load_mode in (
+        LoadExecutionMode.LOAD_ALL,
+        LoadExecutionMode.LOAD_MONTH_END_ONLY
+    ):
+        load_vest_month_end_balance(
+            vest_month_end_balance_df,
+            get_write_engine,
+            dry_run,
+        )
 
-    logger.info("vest month end balance piepline finished successfully | Period: %s", month_year)
+        logger.info("vest month end balance piepline finished successfully | Period: %s", month_year)
+
+    if load_mode in (
+        LoadExecutionMode.LOAD_ALL,
+        LoadExecutionMode.LOAD_TRANSFORMED_TRATRANSACTIONS_ONLY
+    ):
+        load_vest_transformed_transactions(
+            vest_transactions_transformed_df,
+            get_write_engine,
+            dry_run,
+        )
+
+        logger.info("vest transformed transaction piepline finished successfully | Period: %s", month_year)

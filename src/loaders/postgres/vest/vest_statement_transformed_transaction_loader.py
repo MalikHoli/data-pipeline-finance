@@ -13,6 +13,7 @@ POSTGRES_TABLE_NAME: Final = "vest_detailed_statement_transformed"
 def load_vest_transformed_transactions(
         vest_transactions_transformed_df: pd.DataFrame,
         get_write_engine: Callable[[], Engine],
+        dry_run: bool,
 ) -> None:
     """
     loads the data from vest transaction transformer to postgres    
@@ -35,4 +36,5 @@ def load_vest_transformed_transactions(
         vest_transactions_transformed_df,
         POSTGRES_TABLE_NAME,
         get_write_engine,
+        dry_run
     )
