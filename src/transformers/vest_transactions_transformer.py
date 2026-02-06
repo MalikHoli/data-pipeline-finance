@@ -135,7 +135,16 @@ def transform_vest_transactions(
         vest_buy_transactions_df[numeric_columns]
         .apply(_clean_convert_currency_column_to_numeric)
     )
+ 
+    # Amount column is in -ve as its buy value in statement
+    # converting it to +ve
+    vest_buy_transactions_df["Amount"] = vest_buy_transactions_df["Amount"]*(-1)
 
+    if (vest_buy_transactions_df["Amount"]<0).any():
+        logger.warning(
+            "Negative amount detected check the statement | Period = %s",
+            month_year,
+        )
     # --------------------------------------------------------------------------------------
     # creating new columns and defaulting to False to avoid NaN in upcoming transformation
     # --------------------------------------------------------------------------------------
@@ -183,9 +192,8 @@ def transform_vest_transactions(
 
     
     logger.info(
-        "vest transaction table transformed | rows=%d | columns=%s",
+        "vest transaction table transformed | rows=%d",
         len(vest_transactions_transformed_df),
-        list(vest_transactions_transformed_df.columns),
     )
 
     vest_month_end_balance_df = pd.DataFrame(
@@ -199,9 +207,8 @@ def transform_vest_transactions(
     )
 
     logger.info(
-        "vest month end balance df prepared | rows=%d | columns=%s",
+        "vest month end balance df prepared | rows=%d",
         len(vest_month_end_balance_df),
-        list(vest_month_end_balance_df.columns)
     )
-
+ 
     return  vest_month_end_balance_df,vest_transactions_transformed_df

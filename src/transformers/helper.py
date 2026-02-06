@@ -531,6 +531,13 @@ def _assign_buy_exchange_rates_with_inr_amount(
         amount_val = row[amount_col]
         if pd.isna(amount_val):
             df.at[idx, "inr_amount"] = pd.NA
+            
+            logger.error(
+                "Found the NA amount in the vest statement | row = %s",
+                row.to_dict(),         
+            )
+
+            raise ValueError("Missing amount in vest transaction; aborting pipeline")
         else:
             df.at[idx, "inr_amount"] = round(float(amount_val) * float(exch_rate), 2)
 
