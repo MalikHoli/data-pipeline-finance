@@ -29,7 +29,13 @@ def run(
     load_mode: LoadExecutionMode
         custom LoadExecutionMode that provides the flag whether to load month_end_balance or transformed_transaction or both to postgres
     """
-    logger.info("Starting vest month end balance piepline")
+
+    if load_mode == LoadExecutionMode.LOAD_ALL:
+        logger.info("Starting vest transactions and month end balance piepline")
+    elif load_mode == LoadExecutionMode.LOAD_MONTH_END_ONLY:
+        logger.info("Starting vest month end balance piepline")
+    else:
+        logger.info("Starting vest transactions piepline")
     
     month_year = extract_vest_statement_period(pdf_path)
 
@@ -72,11 +78,27 @@ def run(
     )
 
     if prev_month_end_vest_wallet_balance_df.empty:
-        logger.warning(
+        logger.error(
             "No data fetched from 'vest_month_end_balance' | Date = %s", 
             current_statement_Previous_month_last_date
         )
 
+        raise ValueError(
+            "There should not be any period missing the mont end blance | chekc for Date = %s",
+            current_statement_Previous_month_last_date
+        )
+
+    if len(prev_month_end_vest_wallet_balance_df)>1:
+        logger.error(
+            "There should be only one record for period %s in 'vest_month_end_balance'", 
+            current_statement_Previous_month_last_date
+        )
+
+        raise ValueError(
+            "There should be only one record for period %s in the 'vest_month_end_balance' postgres table",
+            current_statement_Previous_month_last_date
+        )
+    
     # getting the required months transaction details
     query = """
     SELECT amount
@@ -166,37 +188,61 @@ def run(
     #-------------------------------------------------------------------------------------
     # executing query and logging respective information
     #-------------------------------------------------------------------------------------
-    logger.info ("Fetching current month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
+    if prev_month_end_vest_wallet_balance_df.loc[0,"balance"] > 0:
+        # if previous month end blance is +ve then we will fetch respecitve exchange rate
+        # not only this we will also fetch current month credit exchange rate if its available
+        logger.info ("Fetching combined current and previous month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
 
-    curr_month_credit_amounts_exchg_rate_df = pd.read_sql(
-        curr_query,
-        engine,
-        params=curr_params,
-    )
-
-    if curr_month_credit_amounts_exchg_rate_df.empty:
-        logger.warning(
-            "No exchange rates found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' | period = %s to %s", 
-            current_statement_month_first_date,
-            current_statement_month_last_date,
+        credit_amounts_exchg_rate_df = pd.read_sql(
+            curr_and_prev_query,
+            engine,
+            params=curr_and_prev_params,
         )
-    
-    logger.info ("Fetching combined current and previous month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
 
-    curr_and_Prev_month_credit_amounts_exchg_rate_df = pd.read_sql(
-        curr_and_prev_query,
-        engine,
-        params=curr_and_prev_params,
-    )
+        if credit_amounts_exchg_rate_df.empty:
+            logger.error(
+                "No exchange rates found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' | period = %s to %s and period = %s to %s", 
+                current_statement_month_first_date,
+                current_statement_month_last_date,
+                current_statement_Previous_month_first_date,
+                current_statement_Previous_month_last_date,
+            )
 
-    if curr_and_Prev_month_credit_amounts_exchg_rate_df.empty:
-        logger.warning(
-            "No exchange rates found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' | period = %s to %s and period = %s to %s", 
-            current_statement_month_first_date,
-            current_statement_month_last_date,
-            current_statement_Previous_month_first_date,
-            current_statement_Previous_month_last_date,
+            raise ValueError(
+                "investigate why no exchange rate found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' even though" \
+                "there is positve month end blance for previous period" \
+                "current preiod is %s", 
+                month_year,
+            )
+
+    elif not curr_month_vest_wallet_credit_df.empty:
+        # if the previous month end balance is -ve then we will check if there are any wallet credit for curr month
+        # if yes then respective exchange rate will be fetched
+        logger.info ("Fetching current month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
+
+        credit_amounts_exchg_rate_df = pd.read_sql(
+            curr_query,
+            engine,
+            params=curr_params,
         )
+
+        if credit_amounts_exchg_rate_df.empty:
+            logger.error(
+                "No exchange rates found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' | period = %s to %s", 
+                current_statement_month_first_date,
+                current_statement_month_last_date,
+            )
+
+            raise ValueError(
+                "investigate why no exchange rate found in 'vest_usd_to_inr_deposit_exch_rate_detailed_statement' even though" \
+                "there is wallet credit for current period (%s)",
+                month_year,
+            )
+    else:
+        # if there is no amount letft to do any transaction then most porbably no buy transaction for this period
+        # hence no point of running any query hence we will return empty df
+        credit_amounts_exchg_rate_df = pd.DataFrame()
+
     #-------------------------------------------------------------------------------------------------------
     #=====================End of fetching dfs from postgres=============================================
 
@@ -210,8 +256,7 @@ def run(
         vest_transactions_extract_df,
         prev_month_end_vest_wallet_balance_df,
         curr_month_vest_wallet_credit_df,
-        curr_month_credit_amounts_exchg_rate_df,
-        curr_and_Prev_month_credit_amounts_exchg_rate_df,
+        credit_amounts_exchg_rate_df,
         current_statement_month_last_date,
         month_year,
     )

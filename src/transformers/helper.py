@@ -27,6 +27,7 @@ RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Final 
        "Price":"price",
        "Amount":"amount",
 }
+MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES: Final = ["date","balance"]
 
 #=============================================================
 def _derive_month_end_date_for_gsheet_posting(
@@ -312,9 +313,9 @@ def _allocate_wallet_amount_to_transactions(
         # LOG C: Wallet exhaustion + split details
         # --------------------------------------------------------------
         logger.info(
-            "Vest wallet %.2f exhausted at row %d; split into used=%.2f, remainder=%.2f",
+            "Vest wallet %.2f exhausted at row %d | used=%.2f, remainder=%.2f",
             wallet_amount,
-            crossover_row,
+            crossover_row+1, #crossover_row has index information now actual row position
             used_amount,
             remainder_amount
         )
