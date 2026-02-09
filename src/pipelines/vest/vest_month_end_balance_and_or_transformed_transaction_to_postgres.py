@@ -5,7 +5,8 @@ from src.common.db import get_write_engine
 
 from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 from src.parsers.pdf.vest_statement_transactions import extract_vest_detailed_transactions
-from src.transformers.vest_transactions_transformer import transform_vest_transactions
+from src.transformers.vest.vest_raw_transactions_transformer import transform_vest_raw_transactions
+from src.transformers.vest.vest_transactions_transformer import transform_vest_transactions
 from src.loaders.postgres.vest.vest_month_end_balance_loader import load_vest_month_end_balance
 from src.loaders.postgres.vest.vest_statement_transformed_transaction_loader import load_vest_transformed_transactions
 from src.pipelines.execution_mode import LoadExecutionMode
@@ -39,10 +40,9 @@ def run(
     
     month_year = extract_vest_statement_period(pdf_path)
 
-    #---------------------------------------------------------
-    # running extractor to get parsed df
-    #---------------------------------------------------------
-    vest_transactions_extract_df = extract_vest_detailed_transactions(pdf_path,month_year)
+    vest_raw_transactions_parsed_df = extract_vest_detailed_transactions(pdf_path,month_year)
+
+    vest_raw_transaction_df = transform_vest_raw_transactions(vest_raw_transactions_parsed_df)
 
     (
         current_statement_month_first_date,
@@ -253,7 +253,7 @@ def run(
         vest_month_end_balance_df,
         vest_transactions_transformed_df,
      ) = transform_vest_transactions(
-        vest_transactions_extract_df,
+        vest_raw_transaction_df,
         prev_month_end_vest_wallet_balance_df,
         curr_month_vest_wallet_credit_df,
         credit_amounts_exchg_rate_df,
@@ -261,6 +261,8 @@ def run(
         month_year,
     )
 
+    print(vest_month_end_balance_df)
+    print(vest_transactions_transformed_df)
     #-----------------------------------------------------------
     # finally the loader to load data to postgres
     #-----------------------------------------------------------

@@ -3,7 +3,7 @@ from src.common.db import get_write_engine
 
 from src.parsers.pdf.bank_statement_period import extract_bank_statement_period
 from src.parsers.pdf.bank_statement import extract_bank_table_transactions
-from src.transformers.vest_investment_exchange_rate_compute import transform_bank_statement_to_get_investment_exchange_rate
+from src.transformers.vest.vest_investment_exchange_rate_compute import transform_bank_statement_to_get_investment_exchange_rate
 from src.loaders.postgres.vest.vest_investment_exchange_rate_loader import load_investment_amount_exch_rate
 
 def run(

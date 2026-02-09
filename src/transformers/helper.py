@@ -13,6 +13,7 @@ from typing import Final,Sequence
 # These variables are intended to be a constant and must not be reassigned.
 # =========================
 GSHEET_OUTPUT_DATE_FORMAT: Final = "%d/%m/%Y"
+VEST_STATEMENT_OUTPUT_DATE_FORMAT: Final = "%m/%d/%Y"
 POSTGRES_OUTPUT_DATE_FORMAT: Final = "%Y-%m-%d"
 NAV_DATE_FORMAT: Final = "%d-%b-%Y"
 EXCEL_ORIGIN: Final = pd.Timestamp("1899-12-30")
@@ -28,6 +29,34 @@ RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Final 
        "Amount":"amount",
 }
 MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES: Final = ["date","balance"]
+VEST_RAW_TRANSACTIONS_REQUIRED_COLUMNS_LIST: Final = [
+        "trade_date",
+        "activity",
+        "symbol",
+        "description",
+        "quantity",
+        "price",
+        "amount",
+]
+VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_NUMERIC: Final = ['amount', 'quantity', 'price']
+VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
+VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC: Final = ['buy_exch_rate', 'inr_amount']
+
+#=============================================================
+def _convert_vest_date_for_postgres_posting(
+        series: pd.Series,
+) -> pd.Series:
+    """
+    Convert vest statement default date format (MM/DD/YYYY) to suitable for postgres (YYYY-MM-DD)
+    """
+    return(
+        pd.to_datetime(
+            series,
+            format=VEST_STATEMENT_OUTPUT_DATE_FORMAT,
+            errors="coerce",
+        )
+        .dt.normalize() #removes time component (sets to midnight)
+    )
 
 #=============================================================
 def _derive_month_end_date_for_gsheet_posting(

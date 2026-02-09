@@ -1,9 +1,37 @@
 import pdfplumber
 import pandas as pd
 import re
+from typing import Final
 
 from src.common.logging import logger
 from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
+
+# its same as 
+# "Trade Date Settle Date Currency Activity Type Symbol / Description Quantity Price Amount"
+VEST_STATEMENT_INDICATION_START_DETAILED_TRANSACTIONS: Final = (
+    "Trade Date "
+    "Settle Date " 
+    "Currency "
+    "Activity Type "
+    "Symbol / Description "
+    "Quantity "
+    "Price "
+    "Amount"
+)
+
+VEST_STATEMENT_INDICATION_END_DETAILED_TRANSACTIONS: Final = "SWEEP ACTIVITY"
+
+VEST_TRANSACTION_STATEMENT_COLUMN_NAMES: Final = [
+    "trade_date",
+    "settle_date",
+    "currency",
+    "activity",
+    "symbol",
+    "description",
+    "quantity",
+    "price",
+    "amount",
+]
 
 def extract_vest_detailed_transactions(
         pdf_path: str,
@@ -14,30 +42,14 @@ def extract_vest_detailed_transactions(
         raise ValueError("Pdf path is not provided")
 
     logger.info("parsing vest transactions for %s",month_year)
-    
-    # below variable declaration is for readability
-    # its same as "Trade Date Settle Date Currency Activity Type Symbol / Description Quantity Price Amount"
-    text_to_detect_start_of_detailed_transactions = (
-        "Trade Date "
-        "Settle Date " 
-        "Currency "
-        "Activity Type "
-        "Symbol / Description "
-        "Quantity "
-        "Price "
-        "Amount"
-    )
 
     # this ensured one more check to sure we are recognizing transaction record
     # as each transaction starts with date in MM/DD/YYY format
     date_pattern = re.compile(r"^\d{2}/\d{2}/\d{4}\b")
 
-    text_to_detect_end_of_detailed_transactions = "SWEEP ACTIVITY"
-
     parsed_rows = []
     
     capture = False
-
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
@@ -52,7 +64,7 @@ def extract_vest_detailed_transactions(
 
                 # STOP condition
                 # stop searching rest of the pdf text
-                if text_to_detect_end_of_detailed_transactions in line:
+                if VEST_STATEMENT_INDICATION_END_DETAILED_TRANSACTIONS in line:
                     capture = False
                     break
 
@@ -62,7 +74,7 @@ def extract_vest_detailed_transactions(
                     continue
 
                 # Detect header
-                if line == text_to_detect_start_of_detailed_transactions:
+                if line == VEST_STATEMENT_INDICATION_START_DETAILED_TRANSACTIONS:
                     capture = True
                     continue
 
@@ -84,8 +96,7 @@ def extract_vest_detailed_transactions(
                     settle_date = parts[1]
                     currency    = parts[2]
                     activity    = parts[3]
-                    type_       = parts[4]
-
+                    symbol      = parts[4]
                     amount      = parts[-1]
                     price       = parts[-2]
                     quantity    = parts[-3]
@@ -97,34 +108,24 @@ def extract_vest_detailed_transactions(
                         settle_date,
                         currency,
                         activity,
-                        type_,
+                        symbol,
                         symbol_desc,
                         quantity,
                         price,
-                        amount
+                        amount,
                     ])
 
-    # Dataframe column names
-    columns = [
-        "Trade Date",
-        "Settle Date",
-        "Currency",
-        "Activity",
-        "Symbol",
-        "Description",
-        "Quantity",
-        "Price",
-        "Amount"
-    ]
-
-    vest_trasaction_df = pd.DataFrame(parsed_rows, columns=columns)
+    vest_parsed_df = pd.DataFrame(
+        parsed_rows, 
+        columns=VEST_TRANSACTION_STATEMENT_COLUMN_NAMES,
+    )
 
     # this provides lenght of dataframe 
-    result = len(vest_trasaction_df)
+    result = len(vest_parsed_df)
 
     if result == 0:
         logger.warning("No transactions found in vest statement")
         return pd.DataFrame()
 
     logger.info("Parsed %d lines of vest transactions for %s", result,month_year)
-    return vest_trasaction_df
+    return vest_parsed_df

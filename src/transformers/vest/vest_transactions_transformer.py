@@ -9,15 +9,15 @@ from src.transformers.helper import (
     _allocate_wallet_amount_to_transactions,
     _assign_buy_exchange_rates_with_inr_amount,
     _clean_convert_currency_column_to_numeric,
-    RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT,
     MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
+    VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC,
 )
 
 # =========================
 # Main transformer
 # =========================
 def transform_vest_transactions(
-        vest_transactions_extract_df: pd.DataFrame,
+        vest_raw_trasaction_df: pd.DataFrame,
         prev_month_end_vest_wallet_balance_df: pd.DataFrame,
         curr_month_vest_wallet_credit_df: pd.DataFrame,
         credit_amounts_exchg_rate_df: pd.DataFrame,
@@ -62,8 +62,8 @@ def transform_vest_transactions(
     # Vest buy transactions filteration
     # ----------------------------------
     vest_buy_transactions_df = (
-        vest_transactions_extract_df[
-            vest_transactions_extract_df["Activity"].isin(["BUY", "JNLC"])
+        vest_raw_trasaction_df[
+            vest_raw_trasaction_df["activity"].isin(["BUY", "JNLC"])
         ]
         .copy()
         .reset_index(drop=True)
@@ -124,23 +124,12 @@ def transform_vest_transactions(
             "length of vest wallet amount list is same as exchange rate list i.e. %d",
             len(vest_wallet_amount_list)
         ) 
-
-    
-    #------------------------------------------------------
-    # converting relevent columns to numeric ones
-    #------------------------------------------------------
-    numeric_columns = ['Amount', 'Quantity', 'Price']
-    
-    vest_buy_transactions_df[numeric_columns]=(
-        vest_buy_transactions_df[numeric_columns]
-        .apply(_clean_convert_currency_column_to_numeric)
-    )
  
     # Amount column is in -ve as its buy value in statement
     # converting it to +ve
-    vest_buy_transactions_df["Amount"] = vest_buy_transactions_df["Amount"]*(-1)
+    vest_buy_transactions_df["amount"] = vest_buy_transactions_df["amount"]*(-1)
 
-    if (vest_buy_transactions_df["Amount"]<0).any():
+    if (vest_buy_transactions_df["amount"]<0).any():
         logger.warning(
             "Negative amount detected check the statement | Period = %s",
             month_year,
@@ -159,34 +148,22 @@ def transform_vest_transactions(
     vest_wallet_amount_allocated_df,remaining_balance = _allocate_wallet_amount_to_transactions(
         vest_wallet_amount_list,
         vest_buy_transactions_df,
-        amount_col = "Amount",
+        amount_col = "amount",
     )
 
     vest_transactions_transformed_df = _assign_buy_exchange_rates_with_inr_amount(
         vest_wallet_amount_allocated_df,
         vest_wallet_amount_exchg_rate_list,
-        amount_col="Amount",
+        amount_col="amount",
     )
 
     #------------------------------------------
-    # dropping unnecessary column
-    # renaming columns as per postgres schema
     # formatting of the numrtic columns
     #------------------------------------------
-    logger.info("cleaning, renaming and formatting as per postgres schema")
+    logger.info("cleaning, formatting of newly created columns as per postgres schema")
 
-    vest_transactions_transformed_df.drop(columns="Settle Date",inplace=True)
-    
-    vest_transactions_transformed_df = (
-        vest_transactions_transformed_df.rename(
-            columns=RENAME_VEST_TRANSFORMED_TRANSACTIONS_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT
-        )
-    )
-
-    numeric_columns = ['quantity', 'price', 'amount', 'buy_exch_rate', 'inr_amount']
-
-    vest_transactions_transformed_df[numeric_columns] = (
-        vest_transactions_transformed_df[numeric_columns]
+    vest_transactions_transformed_df[VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC] = (
+        vest_transactions_transformed_df[VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC]
         .apply(_clean_convert_currency_column_to_numeric)
         .astype(float)
     )
