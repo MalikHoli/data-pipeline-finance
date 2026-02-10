@@ -198,7 +198,7 @@ def _extract_deposit_value_in_USD(
 def _allocate_wallet_amount_to_transactions(
         vest_wallet_amounts: Sequence[float], #this allows list, tuple, NumPy arrays, etc.
         df: pd.DataFrame, 
-        amount_col: str = "Amount",
+        amount_col: str = "amount",
 ) -> tuple[
     pd.DataFrame,
     float
@@ -262,6 +262,12 @@ def _allocate_wallet_amount_to_transactions(
     # This avoids side effects and subtle bugs.
     # ------------------------------------------------------------------
     df = df.copy()
+
+    # ------------------------------------------------------------------
+    # preserving the data types of all columns of df in the dictonary format
+    # later we can enforce same formats to all columns for consistancy and predictable data type output
+    # ------------------------------------------------------------------
+    original_dtypes = df.dtypes.to_dict()
 
     # ------------------------------------------------------------------
     # start_idx:
@@ -376,6 +382,9 @@ def _allocate_wallet_amount_to_transactions(
             ],
             ignore_index=True
         )
+
+        # made sure columns have uniform data types after concatination
+        df = df.astype(original_dtypes)
 
         # --------------------------------------------------------------
         # CASE 2A:

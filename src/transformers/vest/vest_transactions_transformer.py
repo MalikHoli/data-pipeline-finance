@@ -71,7 +71,7 @@ def transform_vest_transactions(
  
     if vest_buy_transactions_df.empty:
         logger.warning(
-            "There were no buy transactions in vest statement for preiod %s",
+            "There were no buy transactions in vest statement for period %s",
             month_year,
         )
 
@@ -188,5 +188,5 @@ def transform_vest_transactions(
         "vest month end balance df prepared | rows=%d",
         len(vest_month_end_balance_df),
     )
- 
+
     return  vest_month_end_balance_df,vest_transactions_transformed_df
