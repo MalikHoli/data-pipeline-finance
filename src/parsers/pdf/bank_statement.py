@@ -1,7 +1,21 @@
 import pdfplumber
 import pandas as pd
+from typing import Final
+
 from src.common.logging import logger
 from src.parsers.pdf.bank_statement_period import extract_bank_statement_period
+
+BANK_STATEMENT_DF_HEADER: Final = [
+    'S No.', 
+    'Value Date', 
+    'Transaction Date', 
+    'Cheque Number',
+    'Transaction Remarks', 
+    'Withdrawal Amount(INR)',
+    'Deposit Amount(INR)', 
+    'Balance(INR)',
+]
+
 
 def extract_bank_table_transactions(
         pdf_path: str,
@@ -14,11 +28,6 @@ def extract_bank_table_transactions(
     logger.info("parsing bank statement for %s",month_year)
 
     all_tables = []
-    header = [
-        'S No.', 'Value Date', 'Transaction Date', 'Cheque Number',
-        'Transaction Remarks', 'Withdrawal Amount(INR)',
-        'Deposit Amount(INR)', 'Balance(INR)'
-    ]
 
     with pdfplumber.open(pdf_path) as pdf:
         for page_inx, page in enumerate(pdf.pages):
@@ -34,7 +43,7 @@ def extract_bank_table_transactions(
                 if row and row[0] and str(row[0]).strip().isdigit()
             ]
 
-            df = pd.DataFrame(rows, columns=header)
+            df = pd.DataFrame(rows, columns=BANK_STATEMENT_DF_HEADER)
             df["source_page"] = page_inx + 1
             all_tables.append(df)
 

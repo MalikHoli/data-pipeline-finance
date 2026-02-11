@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Final
 
 from src.common.logging import logger
 
@@ -10,6 +11,19 @@ from src.transformers.helper import (
     _extract_deposit_value_in_USD,
     _clean_convert_currency_column_to_numeric,
 )
+
+VEST_EXCHANGE_RATE_COMPUTE_DF_RENAMING: Final = {
+        "Transaction Date": "deposit_date",
+        "exchange rate": "exchange_rate_1_usd_to_inr",
+        "USD Value":"usd_deposit",
+        "Withdrawal Amount(INR)":"inr_deposit",
+        }
+
+COLUMNS_TO_CONVERT_NUMERIC: Final = [
+    "exchange_rate_1_usd_to_inr",
+    "usd_deposit",
+    "inr_deposit",
+]
 
 # =========================
 # Main transformer
@@ -60,6 +74,7 @@ def transform_bank_statement_to_get_investment_exchange_rate(
             "No vest deposit transactions found for period %s",
             month_year
         )
+        return pd.DataFrame()
 
     # ----------------------------------
     # Calculate exchage rate
@@ -105,12 +120,7 @@ def transform_bank_statement_to_get_investment_exchange_rate(
     logger.info("renaming columns to match postgres schema names")
 
     insert_df.rename(
-    columns={
-        "Transaction Date": "deposit_date",
-        "exchange rate": "exchange_rate_1_usd_to_inr",
-        "USD Value":"usd_deposit",
-        "Withdrawal Amount(INR)":"inr_deposit",
-        },
+        columns=VEST_EXCHANGE_RATE_COMPUTE_DF_RENAMING,
         inplace=True,
     )
 
@@ -122,16 +132,11 @@ def transform_bank_statement_to_get_investment_exchange_rate(
     insert_df["deposit_date"] = pd.to_datetime(
         insert_df["deposit_date"],
         dayfirst=True,
-    ).dt.date
+    ).dt.normalize()
 
-    insert_df["exchange_rate_1_usd_to_inr"] = _clean_convert_currency_column_to_numeric(
-        insert_df["exchange_rate_1_usd_to_inr"]
-    )
-    insert_df["usd_deposit"] = _clean_convert_currency_column_to_numeric(
-        insert_df["usd_deposit"]
-    )
-    insert_df["inr_deposit"] = _clean_convert_currency_column_to_numeric(
-        insert_df["inr_deposit"]
+    insert_df[COLUMNS_TO_CONVERT_NUMERIC] = (
+        insert_df[COLUMNS_TO_CONVERT_NUMERIC]
+        .apply(_clean_convert_currency_column_to_numeric)
     )
 
     return insert_df
