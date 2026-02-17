@@ -29,7 +29,7 @@ def run(
     vest_investment_amount_exch_rate_computed_df = transform_bank_statement_to_get_investment_exchange_rate(bank_statement_df,month_year)
 
     if vest_investment_amount_exch_rate_computed_df.empty:
-        logger.info("No data wiritten")
+        logger.info("No vest deposits found hence no data written to postgres")
         logger.info("vest invetment amount exchange rate compute pipeline finished successfully | Period: %s", month_year)
         return
 

@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Final
 
 from src.common.logging import logger
 
@@ -10,6 +11,13 @@ from src.transformers.helper import (
     _derive_month_end_date_for_postgres_posting,
     _fetch_usd_to_inr_exch_rate_from_Frankfurter_API,
 )
+
+COLUMNS_TO_DROP_FROM_PARSER: Final = [
+    "account_type",
+    "description",
+]
+
+DATE_FORMAT_FOR_FRANKFURTER_API: Final = "%Y-%m-%d"
 
 # =========================
 # Main transformer
@@ -45,7 +53,7 @@ def transform_vest_holdings(
     # ----------------------------------
     vest_holdings_transformed_df = (
         vest_holdings_extract_df
-        .drop(columns=["account_type","description"])
+        .drop(columns=COLUMNS_TO_DROP_FROM_PARSER)
     )
 
     # -----------------------------------------
@@ -73,6 +81,8 @@ def transform_vest_holdings(
     # fetching usd to inr exchange rate from API and inserting as column
     # ---------------------------------------------------------------------
     # build the helper function for _fetch_usd_to_inr_exch_rate_from_Frankfurter_API
-    usd_to_inr_exch_rate = _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(vest_holding_date)
+    usd_to_inr_exch_rate = _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(vest_holding_date.strftime(DATE_FORMAT_FOR_FRANKFURTER_API))
+
+    vest_holdings_transformed_df["exch_rate"] = usd_to_inr_exch_rate
 
     return vest_holdings_transformed_df

@@ -78,14 +78,17 @@ def _derive_month_end_date_for_gsheet_posting(
 
     final_day = last_day if month == 2 else 30
 
-    final_date = pd.Timestamp(year, month, final_day).strftime(GSHEET_OUTPUT_DATE_FORMAT)
+    final_date = (
+        pd.Timestamp(year, month, final_day)
+        .strftime(GSHEET_OUTPUT_DATE_FORMAT)
+    )
 
     return final_date
 
 #===============================================================
 def _derive_month_end_date_for_postgres_posting(
         month_year: str,
-) -> str:
+) -> pd.Timestamp:
     """
     derive date from period(MM/YYYY) which can be used as date while writing to postgres
 
@@ -102,7 +105,10 @@ def _derive_month_end_date_for_postgres_posting(
 
     final_day = last_day if month == 2 else 30
 
-    final_date = pd.Timestamp(year, month, final_day).strftime(POSTGRES_OUTPUT_DATE_FORMAT)
+    final_date = (
+        pd.Timestamp(year, month, final_day)
+        .normalize()
+    )
 
     return final_date
 

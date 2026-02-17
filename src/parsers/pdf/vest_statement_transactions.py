@@ -33,6 +33,14 @@ VEST_TRANSACTION_STATEMENT_COLUMN_NAMES: Final = [
     "amount",
 ]
 
+# activities where quantity and price DO NOT exist in PDF
+NO_QTY_PRICE_ACTIVITIES: Final = {
+    "JNLC", 
+    "CDEP", 
+    "SLIP", 
+    "INTNRA",
+}
+
 def extract_vest_detailed_transactions(
         pdf_path: str,
         month_year: str,
@@ -101,7 +109,10 @@ def extract_vest_detailed_transactions(
                     price       = parts[-2]
                     quantity    = parts[-3]
 
-                    symbol_desc = " ".join(parts[6:-3])
+                    if activity in NO_QTY_PRICE_ACTIVITIES:
+                        symbol_desc = " ".join(parts[4:-1])
+                    else:
+                        symbol_desc = " ".join(parts[6:-3])
 
                     parsed_rows.append([
                         trade_date,
