@@ -7,9 +7,10 @@ from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 from src.parsers.pdf.vest_statement_transactions import extract_vest_detailed_transactions
 from src.transformers.vest.vest_raw_transactions_transformer import transform_vest_raw_transactions
 from src.loaders.postgres.vest.vest_statement_raw_transactions_loader import load_vest_raw_transactions
+from src.pipelines.vest.validations import validate_vest_raw_transactions_df
 
 def run(
-        pdf_path: Path,
+        pdf_path: str | Path,
         dry_run: bool = False,
 ) -> None:
     """
@@ -29,6 +30,8 @@ def run(
     vest_raw_transactions_parsed_df = extract_vest_detailed_transactions(pdf_path,month_year)
 
     vest_raw_transaction_df = transform_vest_raw_transactions(vest_raw_transactions_parsed_df)
+
+    validate_vest_raw_transactions_df(vest_raw_transaction_df)
  
     load_vest_raw_transactions(
         vest_raw_transaction_df,

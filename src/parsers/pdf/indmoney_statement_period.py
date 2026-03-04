@@ -1,8 +1,11 @@
 import pdfplumber
 from datetime import datetime
+
 from src.common.logging import logger
 
-def extract_indmoney_statement_period(pdf_path: str) -> str:
+def extract_indmoney_statement_period(
+        pdf_path: str
+) -> str:
     
     logger.info("Parsing pdf %s",pdf_path)
 

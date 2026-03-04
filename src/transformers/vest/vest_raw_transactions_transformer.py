@@ -26,8 +26,6 @@ def transform_vest_raw_transactions(
     ----------
     vest_transactions_extract_df: pd.DataFrame,
         Output dataframe from vest_transactions_parser
-    month_year : str
-        The period for which this vest statement generated
     
     Returns
     -------

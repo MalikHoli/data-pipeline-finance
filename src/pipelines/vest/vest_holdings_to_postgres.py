@@ -4,6 +4,8 @@ from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 from src.parsers.pdf.vest_statement_holdings import extract_vest_holdings
 from src.transformers.vest.vest_holdings_transformer import transform_vest_holdings
 from src.loaders.postgres.vest.vest_statement_holdings_loader import load_vest_holdings
+from src.pipelines.vest.validations import validate_vest_holdings_df
+
 from src.common.db import get_write_engine
 from src.common.logging import logger
 
@@ -31,6 +33,8 @@ def run(
         vest_holdings_df,
         month_year
     )
+
+    validate_vest_holdings_df(vest_holdings_transformed_df)
 
     load_vest_holdings(
         vest_holdings_transformed_df,

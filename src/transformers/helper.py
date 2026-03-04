@@ -645,7 +645,7 @@ def _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(
 
     data = response.json()
 
-    exch_rate = round(float(data["rates"]["INR"]))
+    exch_rate = round(float(data["rates"]["INR"]), 2)
 
     logger.info("Fetched exchange rate info from Frankfurter API for %s | %f",date,exch_rate)
 

@@ -48,7 +48,7 @@ def extract_bank_table_transactions(
             all_tables.append(df)
 
     if not all_tables:
-        logger.warning("No transactions found in back statement")
+        logger.warning("No transactions found in bank statement")
         return pd.DataFrame()
 
     result = pd.concat(all_tables, ignore_index=True)

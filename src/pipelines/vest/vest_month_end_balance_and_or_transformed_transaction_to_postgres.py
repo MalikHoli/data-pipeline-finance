@@ -2,6 +2,7 @@ import pandas as pd
 
 from src.common.logging import logger
 from src.common.db import get_write_engine
+from src.common.db import get_read_engine
 
 from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 from src.parsers.pdf.vest_statement_transactions import extract_vest_detailed_transactions
@@ -10,6 +11,7 @@ from src.transformers.vest.vest_transactions_transformer import transform_vest_t
 from src.loaders.postgres.vest.vest_month_end_balance_loader import load_vest_month_end_balance
 from src.loaders.postgres.vest.vest_statement_transformed_transaction_loader import load_vest_transformed_transactions
 from src.pipelines.execution_mode import LoadExecutionMode
+from src.pipelines.vest.validations import validate_vest_month_end_and_transformed_transactions
 
 from src.pipelines.helper import _derive_vest_statement_dates
 
@@ -57,7 +59,7 @@ def run(
     # IMP: From here we fetch data from postgres table which are required to feed to transformers
     # improvement/pondering point: can we make sure the order of vest statements to extract does not matter?
     #=============================================================================================
-    engine = get_write_engine()
+    read_engine = get_read_engine()
 
     query = """
     SELECT balance
@@ -73,7 +75,7 @@ def run(
     
     prev_month_end_vest_wallet_balance_df = pd.read_sql(
         query,
-        engine,
+        read_engine,
         params=params,
     )
 
@@ -115,7 +117,7 @@ def run(
 
     curr_month_vest_wallet_credit_df = pd.read_sql(
         query,
-        engine,
+        read_engine,
         params=params,
     )
 
@@ -195,7 +197,7 @@ def run(
 
         credit_amounts_exchg_rate_df = pd.read_sql(
             curr_and_prev_query,
-            engine,
+            read_engine,
             params=curr_and_prev_params,
         )
 
@@ -222,7 +224,7 @@ def run(
 
         credit_amounts_exchg_rate_df = pd.read_sql(
             curr_query,
-            engine,
+            read_engine,
             params=curr_params,
         )
 
@@ -261,8 +263,14 @@ def run(
         month_year,
     )
 
-    print(vest_month_end_balance_df)
-    print(vest_transactions_transformed_df)
+    validate_vest_month_end_and_transformed_transactions(
+        vest_month_end_balance_df,
+        vest_transactions_transformed_df,
+        prev_month_end_vest_wallet_balance_df,
+        curr_month_vest_wallet_credit_df,
+        credit_amounts_exchg_rate_df,
+    )
+    
     #-----------------------------------------------------------
     # finally the loader to load data to postgres
     #-----------------------------------------------------------

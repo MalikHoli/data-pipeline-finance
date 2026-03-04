@@ -5,6 +5,7 @@ from src.parsers.pdf.bank_statement_period import extract_bank_statement_period
 from src.parsers.pdf.bank_statement import extract_bank_table_transactions
 from src.transformers.vest.vest_investment_exchange_rate_compute import transform_bank_statement_to_get_investment_exchange_rate
 from src.loaders.postgres.vest.vest_investment_exchange_rate_loader import load_investment_amount_exch_rate
+from src.pipelines.vest.validations import validate_vest_investment_exchange_rate_df
 
 def run(
         pdf_path: str,
@@ -28,6 +29,8 @@ def run(
     
     vest_investment_amount_exch_rate_computed_df = transform_bank_statement_to_get_investment_exchange_rate(bank_statement_df,month_year)
 
+    validate_vest_investment_exchange_rate_df(vest_investment_amount_exch_rate_computed_df)
+
     if vest_investment_amount_exch_rate_computed_df.empty:
         logger.info("No vest deposits found hence no data written to postgres")
         logger.info("vest invetment amount exchange rate compute pipeline finished successfully | Period: %s", month_year)
@@ -40,9 +43,3 @@ def run(
     )
 
     logger.info("vest invetment amount exchange rate compute pipeline finished successfully | Period: %s", month_year)
-
-
-
-
-
-
