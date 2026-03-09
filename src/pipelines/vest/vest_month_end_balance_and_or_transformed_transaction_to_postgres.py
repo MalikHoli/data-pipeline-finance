@@ -10,8 +10,11 @@ from src.transformers.vest.vest_raw_transactions_transformer import transform_ve
 from src.transformers.vest.vest_transactions_transformer import transform_vest_transactions
 from src.loaders.postgres.vest.vest_month_end_balance_loader import load_vest_month_end_balance
 from src.loaders.postgres.vest.vest_statement_transformed_transaction_loader import load_vest_transformed_transactions
-from src.pipelines.execution_mode import LoadExecutionMode
+
 from src.pipelines.vest.validations import validate_vest_month_end_and_transformed_transactions
+
+from src.pipelines.execution_mode import LoadExecutionMode
+from src.repositories.vest_reference_repository import VestReferenceRepository
 
 from src.pipelines.helper import _derive_vest_statement_dates
 
@@ -60,23 +63,12 @@ def run(
     # improvement/pondering point: can we make sure the order of vest statements to extract does not matter?
     #=============================================================================================
     read_engine = get_read_engine()
-
-    query = """
-    SELECT balance
-    FROM vest_month_end_balance
-    WHERE date=%(last_day_prev_month)s
-    """
-
-    params = {
-        "last_day_prev_month": current_statement_Previous_month_last_date
-    }
-
-    logger.info ("Fetching previous month end balance from 'vest_month_end_balance' postgres table")
     
-    prev_month_end_vest_wallet_balance_df = pd.read_sql(
-        query,
-        read_engine,
-        params=params,
+    # initializing vest SQL repository query class with read engine
+    vest_reference_repository = VestReferenceRepository(read_engine)
+
+    prev_month_end_vest_wallet_balance_df = vest_reference_repository.fetch_prev_month_end_balance(
+        current_statement_Previous_month_last_date,
     )
 
     if prev_month_end_vest_wallet_balance_df.empty:
@@ -102,23 +94,12 @@ def run(
         )
     
     # getting the required months transaction details
-    query = """
-    SELECT amount
-    FROM vest_detailed_statement
-    WHERE activity='CDEP' AND trade_date BETWEEN %(start_date)s AND %(end_date)s
-    """
-
-    params = {
-        "start_date": current_statement_month_first_date,
-        "end_date": current_statement_month_last_date,
-    }
 
     logger.info ("Fetching current month vest wallet deposits from 'vest_detailed_statement' postgres table")
 
-    curr_month_vest_wallet_credit_df = pd.read_sql(
-        query,
-        read_engine,
-        params=params,
+    curr_month_vest_wallet_credit_df = vest_reference_repository.fetch_curr_month_wallet_credits(
+        current_statement_month_first_date,
+        current_statement_month_last_date,
     )
 
     if curr_month_vest_wallet_credit_df.empty:
@@ -127,65 +108,6 @@ def run(
             current_statement_month_first_date,
             current_statement_month_last_date,
         )
-    
-    #-----------------------------------------------------------------------------------
-    # Below queries are to get the exchange rate list for the respective wallet balances
-    #-----------------------------------------------------------------------------------
-    # This query is to fetch the exchange rates for the current month
-    curr_query= """
-    SELECT exchange_rate_1_usd_to_inr FROM vest_usd_to_inr_deposit_exch_rate
-    WHERE deposit_date BETWEEN %(start_date)s AND %(end_date)s
-    ORDER BY deposit_date ASC 
-    """
-    curr_params = {
-        "start_date": current_statement_month_first_date,
-        "end_date": current_statement_month_last_date
-    }
-
-    # This query is to fetch the exchange rate pertaining to last month balance along with the current month exch rate
-    curr_and_prev_query = """
-    -- Final result: only exchange_rate_1_usd_to_inr, sorted chronologically by deposit_date
-    -- Uses a subquery to ensure sorting by deposit_date before selecting just the rate
-    SELECT exchange_rate_1_usd_to_inr
-    FROM (
-        -- Inner query: combine current period + fallback rate, with full date context
-        SELECT deposit_date, exchange_rate_1_usd_to_inr
-        FROM vest_usd_to_inr_deposit_exch_rate
-        WHERE deposit_date BETWEEN %(start_date)s AND %(end_date)s
-        UNION ALL
-        -- Add the most recent rate from previous month (or global max)
-        SELECT deposit_date, exchange_rate_1_usd_to_inr
-        FROM (
-            SELECT deposit_date, exchange_rate_1_usd_to_inr
-            FROM vest_usd_to_inr_deposit_exch_rate
-            WHERE deposit_date = (
-                SELECT COALESCE(
-                    (
-                        SELECT MAX(deposit_date)
-                        FROM vest_usd_to_inr_deposit_exch_rate
-                        WHERE deposit_date BETWEEN %(prev_month_start_date)s AND %(prev_month_end_date)s
-                    ),
-                    (
-                        SELECT MAX(deposit_date)
-                        FROM vest_usd_to_inr_deposit_exch_rate
-                        WHERE deposit_date <= %(prev_month_end_date)s
-                    )
-                )
-            )
-            ORDER BY ctid DESC
-            LIMIT 1
-        ) t
-    ) AS combined_rates
-    -- Now order by deposit_date (available inside subquery), then select only exchange rate
-    ORDER BY deposit_date ASC;
-    """
-    curr_and_prev_params = {
-        "prev_month_start_date": current_statement_Previous_month_first_date,
-        "prev_month_end_date": current_statement_Previous_month_last_date,
-        "start_date": current_statement_month_first_date,
-        "end_date": current_statement_month_last_date
-    }
-    #----------------------------------------------------------------------------
 
     #-------------------------------------------------------------------------------------
     # executing query and logging respective information
@@ -195,10 +117,11 @@ def run(
         # not only this we will also fetch current month credit exchange rate if its available
         logger.info ("Fetching combined current and previous month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
 
-        credit_amounts_exchg_rate_df = pd.read_sql(
-            curr_and_prev_query,
-            read_engine,
-            params=curr_and_prev_params,
+        credit_amounts_exchg_rate_df = vest_reference_repository.fetch_curr_and_prev_exchange_rates(
+            current_statement_Previous_month_first_date,
+            current_statement_Previous_month_last_date,
+            current_statement_month_first_date,
+            current_statement_month_last_date,
         )
 
         if credit_amounts_exchg_rate_df.empty:
@@ -222,10 +145,9 @@ def run(
         # if yes then respective exchange rate will be fetched
         logger.info ("Fetching current month vest wallet deposits exchange rate from 'vest_usd_to_inr_deposit_exch_rate' postgres table")
 
-        credit_amounts_exchg_rate_df = pd.read_sql(
-            curr_query,
-            read_engine,
-            params=curr_params,
+        credit_amounts_exchg_rate_df = vest_reference_repository.fetch_curr_month_exchange_rates(
+            current_statement_month_first_date,
+            current_statement_month_last_date,
         )
 
         if credit_amounts_exchg_rate_df.empty:
