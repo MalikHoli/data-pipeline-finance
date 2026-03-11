@@ -18,6 +18,10 @@ from src.repositories.vest_reference_repository import VestReferenceRepository
 
 from src.pipelines.helper import _derive_vest_statement_dates
 
+from src.transformers.helper import (
+    MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
+)
+
 def run(
         pdf_path: str,
         dry_run: bool = False,
@@ -71,6 +75,18 @@ def run(
         current_statement_Previous_month_last_date,
     )
 
+    # creating a df for initial vest investment period
+    if month_year == "7/2024":
+        prev_month_end_vest_wallet_balance_df = pd.DataFrame(
+        [
+            [
+                current_statement_month_last_date,
+                0,
+        ]
+    ],
+          columns=MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
+    )
+
     if prev_month_end_vest_wallet_balance_df.empty:
         logger.error(
             "No data fetched from 'vest_month_end_balance' | Date = %s", 
@@ -78,7 +94,7 @@ def run(
         )
 
         raise ValueError(
-            "There should not be any period missing the mont end blance | chekc for Date = %s",
+            "There should not be any period missing the month end blance | check for Date = %s",
             current_statement_Previous_month_last_date
         )
 

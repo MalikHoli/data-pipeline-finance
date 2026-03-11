@@ -5,3 +5,4 @@ data/
 secret_key.json
 tests/
 .pytest_cache/
+logs/

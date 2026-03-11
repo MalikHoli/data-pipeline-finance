@@ -114,18 +114,19 @@ def validate_vest_investment_exchange_rate_df(
     """
     Validate transformed vest investment exchange-rate dataframe schema and dtypes.
     """
-    missing_cols = MUST_HAVE_COLUMNS_VEST_EXCHANGE_RATE_TRANSFORMER - set(df.columns)
-    
-    if missing_cols:
-        logger.error("Missing required columns in transformed dataframe: %s", missing_cols)
-        raise ValueError(f"Missing required columns: {missing_cols}")
+    if not df.empty:
+        missing_cols = MUST_HAVE_COLUMNS_VEST_EXCHANGE_RATE_TRANSFORMER - set(df.columns)
+        
+        if missing_cols:
+            logger.error("Missing required columns in transformed dataframe: %s", missing_cols)
+            raise ValueError(f"Missing required columns: {missing_cols}")
 
-    if not is_datetime64_any_dtype(df["deposit_date"]):
-        raise ValueError("Column 'deposit_date' must be datetime dtype")
+        if not is_datetime64_any_dtype(df["deposit_date"]):
+            raise ValueError("Column 'deposit_date' must be datetime dtype")
 
-    for col in MUST_HAVE_NUMERIC_COLUMNS_VEST_EXCHANGE_RATE_TRANSFORMER:
-        if not is_numeric_dtype(df[col]):
-            raise ValueError(f"Column '{col}' must be numeric dtype")
+        for col in MUST_HAVE_NUMERIC_COLUMNS_VEST_EXCHANGE_RATE_TRANSFORMER:
+            if not is_numeric_dtype(df[col]):
+                raise ValueError(f"Column '{col}' must be numeric dtype")
         
 
 def validate_vest_raw_transactions_df(
@@ -225,9 +226,8 @@ def validate_vest_month_end_and_transformed_transactions(
     tolerance: int = 2,
 ) -> None:
     """Validate transformed vest transactions and reconciliation logic for month-end pipeline."""
-    if not prev_month_end_vest_wallet_balance_df.empty and not credit_amounts_exchg_rate_df.empty:
-        if transformed_transaction_df.empty:
-            raise ValueError("Transformed vest transaction dataframe is empty")
+    if transformed_transaction_df.empty:
+        return
 
     missing_cols = MUST_HAVE_COLUMNS_VEST_TRANSFORMED_TRANSACTION - set(transformed_transaction_df.columns)
     if missing_cols:
@@ -259,7 +259,14 @@ def validate_vest_month_end_and_transformed_transactions(
         )
 
     if not prev_month_end_vest_wallet_balance_df.empty and not credit_amounts_exchg_rate_df.empty:
-        wallet_balance = prev_month_end_vest_wallet_balance_df["balance"].tolist()
+    
+        wallet_balance = []
+
+        balance = prev_month_end_vest_wallet_balance_df["balance"].iloc[0]
+
+        if balance > 0:
+            wallet_balance.append(balance)
+
         wallet_balance.extend(curr_month_vest_wallet_credit_df["amount"].tolist())
 
         expected_inr_amounts = [
