@@ -13,7 +13,7 @@ from src.common.logging import logger
 from src.pipelines.vest.vest_investment_exchange_rate_to_postgres import run as run_vest_investment_exchange_rate_pipeline
 
 # -------------------------------------------------------------------
-# Logging Setup
+# Logging Setup to create .txt log file
 # -------------------------------------------------------------------
 LOG_DIR = Path("logs")
 

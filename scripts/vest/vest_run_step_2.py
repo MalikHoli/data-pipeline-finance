@@ -111,33 +111,33 @@ def main() -> None:
     # 3) Run files in chronological order for predictable dependencies
     files = sorted(files, key=_sort_key)
 
-    logger.info("Starting DRY RUN batch")
+    logger.info("Starting ACTUAL RUN batch")
 
     # 4) Run pipeline for each file in dry-run mode
     for file_path in files:
-        logger.info("[DRY RUN] Processing: %s", file_path)
+        logger.info("[RUN] Processing: %s", file_path)
 
         logger.info("*" * 70)
         # Pipeline 2: holdings
         run_vest_holdings_pipeline(
             pdf_path=file_path,
-            dry_run=True,
+            dry_run=False,
         )
         logger.info("*" * 70)
         # Pipeline 3: raw transactions
         run_vest_raw_pipeline(
             pdf_path=file_path,
-            dry_run=True,
+            dry_run=False,
         )
         logger.info("*" * 70)
         # Pipeline 4: month-end + transformed transactions
         run_vest_month_end_and_transformed_pipeline(
             pdf_path=str(file_path),
-            dry_run=True,
+            dry_run=False,
             load_mode=LOAD_MODE,
         )
         logger.info("*" * 70)
-    logger.info("DRY RUN batch completed | files=%d", len(files))
+    logger.info("ACTUAL RUN batch completed | files=%d", len(files))
 
 
 if __name__ == "__main__":

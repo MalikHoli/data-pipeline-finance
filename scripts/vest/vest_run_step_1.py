@@ -1,8 +1,7 @@
 import sys
 from pathlib import Path
-from datetime import datetime
 import logging
-import re
+from datetime import datetime
 
 # Allow `python scripts/...` to import from `src/`
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -10,13 +9,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from src.common.logging import logger
-from src.pipelines.execution_mode import LoadExecutionMode
 
-from src.pipelines.vest.vest_holdings_to_postgres import run as run_vest_holdings_pipeline
-from src.pipelines.vest.vest_raw_transactions_to_postgres import run as run_vest_raw_pipeline
-from src.pipelines.vest.vest_month_end_balance_and_or_transformed_transaction_to_postgres import (
-    run as run_vest_month_end_and_transformed_pipeline,
-)
+from src.pipelines.vest.vest_investment_exchange_rate_to_postgres import run as run_vest_investment_exchange_rate_pipeline
 
 # -------------------------------------------------------------------
 # Logging Setup to create .txt log file
@@ -62,38 +56,8 @@ logger.addHandler(file_handler)
 # -------------------------------------------------------------------
 # Constants (kept fixed to reduce complexity as requested)
 # -------------------------------------------------------------------
-INPUT_DIR = Path("data/inbound/vest_statement")
-FILE_PATTERN = "Stmt_VSTF_*"
-LOAD_MODE = LoadExecutionMode.LOAD_ALL
-PERIOD_RE = re.compile(r"([A-Za-z]{3})(\d{4})$")
-MONTH_INDEX = {
-    "jan": 1,
-    "feb": 2,
-    "mar": 3,
-    "apr": 4,
-    "may": 5,
-    "jun": 6,
-    "jul": 7,
-    "aug": 8,
-    "sep": 9,
-    "oct": 10,
-    "nov": 11,
-    "dec": 12,
-}
-
-#-------------------------------------------------------------
-# Helper functions
-#-------------------------------------------------------------
-def _sort_key(path: Path) -> tuple[int, int, str]:
-    """Sort files chronologically from suffix (e.g., Apr2025)."""
-    match = PERIOD_RE.search(path.stem)
-    if not match:
-        return (9999, 99, path.stem.lower())
-
-    month = MONTH_INDEX.get(match.group(1).lower(), 99)
-    year = int(match.group(2))
-    return (year, month, path.stem.lower())
-#----------------------------------------------------------------
+INPUT_DIR = Path("data/inbound/bank_statement")
+FILE_PATTERN = "OpTransactionHistory_*"
 
 def main() -> None:
     # 1) Validate folder
@@ -102,42 +66,26 @@ def main() -> None:
 
     # 2) Collect files matching the fixed pattern
     files = [p for p in INPUT_DIR.glob(FILE_PATTERN) if p.is_file()]
-    
     if not files:
         raise FileNotFoundError(
             f"No files found in {INPUT_DIR} matching pattern: {FILE_PATTERN}"
         )
 
-    # 3) Run files in chronological order for predictable dependencies
-    files = sorted(files, key=_sort_key)
+    logger.info("Starting ACTUAL RUN batch")
 
-    logger.info("Starting DRY RUN batch")
-
-    # 4) Run pipeline for each file in dry-run mode
+    # 3) Run pipeline for each file in actual-run mode
     for file_path in files:
-        logger.info("[DRY RUN] Processing: %s", file_path)
+        logger.info("[RUN] Processing: %s", file_path)
 
-        logger.info("*" * 70)
-        # Pipeline 2: holdings
-        run_vest_holdings_pipeline(
+        # Pipeline 1: investment exchange rate
+        run_vest_investment_exchange_rate_pipeline(
             pdf_path=file_path,
-            dry_run=True,
+            dry_run=False,
         )
+        
         logger.info("*" * 70)
-        # Pipeline 3: raw transactions
-        run_vest_raw_pipeline(
-            pdf_path=file_path,
-            dry_run=True,
-        )
-        logger.info("*" * 70)
-        # Pipeline 4: month-end + transformed transactions
-        run_vest_month_end_and_transformed_pipeline(
-            pdf_path=str(file_path),
-            dry_run=True,
-            load_mode=LOAD_MODE,
-        )
-        logger.info("*" * 70)
-    logger.info("DRY RUN batch completed | files=%d", len(files))
+
+    logger.info("ACTUAL RUN batch completed | files=%d", len(files))
 
 
 if __name__ == "__main__":
