@@ -12,6 +12,8 @@ from src.pipelines.vest.validations import validate_vest_raw_transactions_df
 def run(
         pdf_path: str | Path,
         dry_run: bool = False,
+        run_mode: str = "delta",
+        backup_before_truncate: bool = False,
 ) -> None:
     """
     Runs the vest transactions pdf → postgres pipeline.
@@ -22,6 +24,10 @@ def run(
         Path to vest pdf
     dry_run : bool
         If True, executes full pipeline except postgres write
+    run_mode : str
+        "delta" appends rows. "full" enables one-time pre-load truncate.
+    backup_before_truncate : bool
+        Whether to create a timestamped backup table before truncate in full mode.
     """
     logger.info("Starting vest raw transaction pipeline")
 
@@ -37,6 +43,8 @@ def run(
         vest_raw_transaction_df,
         get_write_engine,
         dry_run,
+        run_mode,
+        backup_before_truncate,
     )
 
     logger.info("vest raw transactions pipeline finished successfully | Period: %s", month_year)        

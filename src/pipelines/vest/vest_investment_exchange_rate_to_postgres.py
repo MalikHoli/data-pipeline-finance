@@ -10,6 +10,8 @@ from src.pipelines.vest.validations import validate_vest_investment_exchange_rat
 def run(
         pdf_path: str,
         dry_run: bool=False,
+        run_mode: str = "delta",
+        backup_before_truncate: bool = False,
 )-> None:
     """
     Runs the bank statement pdf → compute investment amount exchage rate → postgres pipeline.
@@ -20,6 +22,10 @@ def run(
         Path to bank statement pdf
     dry_run : bool
         If True, executes full pipeline except postgres write
+     run_mode : str
+        "delta" appends rows. "full" enables one-time pre-load truncate.
+    backup_before_truncate : bool
+        Whether to create a timestamped backup table before truncate in full mode.
     """
     logger.info("Starting vest invetment amount exchange rate compute pipeline")
     
@@ -40,6 +46,8 @@ def run(
         vest_investment_amount_exch_rate_computed_df,
         get_write_engine,
         dry_run,
+        run_mode,
+        backup_before_truncate,
     )
 
     logger.info("vest invetment amount exchange rate compute pipeline finished successfully | Period: %s", month_year)

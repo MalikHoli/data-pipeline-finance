@@ -58,6 +58,8 @@ logger.addHandler(file_handler)
 # -------------------------------------------------------------------
 INPUT_DIR = Path("data/inbound/bank_statement")
 FILE_PATTERN = "OpTransactionHistory_*"
+RUN_MODE = "delta"
+BACKUP_BEFORE_TRUNCATE = False
 
 def main() -> None:
     # 1) Validate folder
@@ -71,7 +73,7 @@ def main() -> None:
             f"No files found in {INPUT_DIR} matching pattern: {FILE_PATTERN}"
         )
 
-    logger.info("Starting ACTUAL RUN batch")
+    logger.info("Starting ACTUAL RUN batch | run_mode=%s", RUN_MODE)
 
     # 3) Run pipeline for each file in actual-run mode
     for file_path in files:
@@ -81,6 +83,8 @@ def main() -> None:
         run_vest_investment_exchange_rate_pipeline(
             pdf_path=file_path,
             dry_run=False,
+            run_mode=RUN_MODE,
+            backup_before_truncate=BACKUP_BEFORE_TRUNCATE,
         )
         
         logger.info("*" * 70)

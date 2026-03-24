@@ -14,6 +14,8 @@ def load_vest_raw_transactions(
         vest_raw_trasaction_df: pd.DataFrame,
         get_write_engine: Callable[[],Engine],
         dry_run: bool,
+        run_mode: str = "delta",
+        backup_before_truncate: bool = False,
 ) -> None:
     """
     loads the parsed vest pdf to postgres    
@@ -25,6 +27,12 @@ def load_vest_raw_transactions(
     get_write_engine
         Zero-argument callable that returns a SQLAlchemy write-enabled
         Postgres engine.
+    dry_run : bool
+        If True, executes full pipeline except postgres write.
+    run_mode : str
+        "delta" appends rows. "full" truncates target table once before load.
+    backup_before_truncate : bool
+        Whether to create a timestamped backup table before truncate in full mode.
     
     Returns
     -------
@@ -37,4 +45,6 @@ def load_vest_raw_transactions(
         POSTGRES_TABLE_NAME,
         get_write_engine,
         dry_run,
+        run_mode,
+        backup_before_truncate,
     )

@@ -26,6 +26,8 @@ def run(
         pdf_path: str,
         dry_run: bool = False,
         load_mode: LoadExecutionMode = LoadExecutionMode.LOAD_ALL,
+        run_mode: str = "delta",
+        backup_before_truncate: bool = False,
 )-> None:
     """
     Runs the vest statement pdf → compute month_end_vest_wallet_balance → postgres pipeline.
@@ -38,6 +40,10 @@ def run(
         If True, executes full pipeline except postgres write
     load_mode: LoadExecutionMode
         custom LoadExecutionMode that provides the flag whether to load month_end_balance or transformed_transaction or both to postgres
+     run_mode : str
+        "delta" appends rows. "full" enables one-time pre-load truncate.
+    backup_before_truncate : bool
+        Whether to create a timestamped backup table before truncate in full mode.
     """
 
     if load_mode == LoadExecutionMode.LOAD_ALL:
@@ -220,6 +226,8 @@ def run(
             vest_month_end_balance_df,
             get_write_engine,
             dry_run,
+            run_mode,
+            backup_before_truncate,
         )
 
         logger.info("vest month end balance piepline finished successfully | Period: %s", month_year)
@@ -232,6 +240,8 @@ def run(
             vest_transactions_transformed_df,
             get_write_engine,
             dry_run,
+            run_mode,
+            backup_before_truncate,
         )
 
         logger.info("vest transformed transaction piepline finished successfully | Period: %s", month_year)

@@ -80,6 +80,8 @@ MONTH_INDEX = {
     "nov": 11,
     "dec": 12,
 }
+RUN_MODE = "delta"
+BACKUP_BEFORE_TRUNCATE = False
 
 #-------------------------------------------------------------
 # Helper functions
@@ -111,7 +113,7 @@ def main() -> None:
     # 3) Run files in chronological order for predictable dependencies
     files = sorted(files, key=_sort_key)
 
-    logger.info("Starting ACTUAL RUN batch")
+    logger.info("Starting ACTUAL RUN batch | run_mode=%s", RUN_MODE)
 
     # 4) Run pipeline for each file in dry-run mode
     for file_path in files:
@@ -122,12 +124,16 @@ def main() -> None:
         run_vest_holdings_pipeline(
             pdf_path=file_path,
             dry_run=False,
+            run_mode=RUN_MODE,
+            backup_before_truncate=BACKUP_BEFORE_TRUNCATE,
         )
         logger.info("*" * 70)
         # Pipeline 3: raw transactions
         run_vest_raw_pipeline(
             pdf_path=file_path,
             dry_run=False,
+            run_mode=RUN_MODE,
+            backup_before_truncate=BACKUP_BEFORE_TRUNCATE,
         )
         logger.info("*" * 70)
         # Pipeline 4: month-end + transformed transactions
@@ -135,6 +141,8 @@ def main() -> None:
             pdf_path=str(file_path),
             dry_run=False,
             load_mode=LOAD_MODE,
+            run_mode=RUN_MODE,
+            backup_before_truncate=BACKUP_BEFORE_TRUNCATE,
         )
         logger.info("*" * 70)
     logger.info("ACTUAL RUN batch completed | files=%d", len(files))
