@@ -1,12 +1,11 @@
 import pdfplumber
-import re
 from src.common.logging import logger
+
+from src.parsers.pdf.parsing_stategies.bank_statement_format_parsers import PERIOD_PARSERS
 
 def extract_bank_statement_period(pdf_path: str) -> str:
 
     logger.info("Parsing pdf %s",pdf_path)
-
-    transaction_period_text_indicator = "Transaction Date from "
 
     with pdfplumber.open(pdf_path) as pdf:
         # we are interested in 1st page to extract transaction period
@@ -17,16 +16,23 @@ def extract_bank_statement_period(pdf_path: str) -> str:
             raise ValueError("No text found in the 1st page of bank statement")
 
     lines = text.split("\n")
-    for line in lines:
-        line = line.strip()   
-        if transaction_period_text_indicator in line:
-            # last 7 character should give us MM/YYYY format string
-            month_year = line[-7:] 
-            
-            # checking if the format of text is not like MM/YYYY
-            if not re.fullmatch(r"(0[1-9]|1[0-2])/\d{4}", month_year):
-                logger.error("format of the transaction period is not matching MM/YYYY")
-                raise ValueError(f"Invalid month/year format: {month_year}")
 
-    logger.info("This bank statement is for %s",month_year)
-    return month_year
+    # Try each parser until one succeeds
+    for parser in PERIOD_PARSERS:
+        month_year = parser(lines)
+
+        if month_year:
+            logger.info(
+                "Transaction period extracted using %s: %s",
+                parser.__name__,
+                month_year,
+            )
+            return month_year
+
+    # If no parser succeeds → fail explicitly
+    logger.error(
+        "Failed to extract transaction period using all known parsers"
+    )
+    raise ValueError(
+        "Unable to determine transaction period from statement"
+    )

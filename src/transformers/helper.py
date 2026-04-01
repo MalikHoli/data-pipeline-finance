@@ -4,6 +4,7 @@ from calendar import monthrange
 import re
 from decimal import Decimal
 import requests
+import time
 
 from src.common.logging import logger
 
@@ -600,53 +601,67 @@ def _assign_buy_exchange_rates_with_inr_amount(
     return df
 
 #======================================================================
+import requests
+from src.common.logging import logger
+
+
 def _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(
         date: str,
 ) -> float:
     """
-    Fetches exchage rate information from the free Frankfurter API for passed date
-    fetched exchange rate is rounded to 2 decimal places
-
-    Parameters
-    ----------
-    date: str
-        Input date string pertaining to vest statement date (end date we put in gsheet)
-    
-    Returns
-    -------
-    flat
-        returns the exchange for the passed date string
+    Fetch exchange rate from Frankfurter API (v2) for a given date.
+    Returns USD → INR rate rounded to 2 decimal places.
     """
-    #--------------------------------------------------
-    # Building API URL dynamically using date
-    #---------------------------------------------------
-    url = f"https://api.frankfurter.dev/v1/{date}?base=USD&symbols=INR"
 
-    #--------------------------------------------------
-    # Calling API
-    # The API returns:
-    # - exchange rate for that date OR
-    # - the nearest previous business day
-    #---------------------------------------------------
-    logger.info("Fetching exchange rate information from Frankfurter API for %s",date)
+    url = (
+        f"https://api.frankfurter.dev/v2/rates"
+        f"?date={date}&base=USD&quotes=INR"
+    )
 
-    try:
-        response = requests.get(url,timeout=10)
-        response.raise_for_status() # this will immediately raise an exception if HTTP status is not 200 (success)
+    logger.info("Fetching exchange rate for %s", date)
 
-    except requests.HTTPError:
-        logger.error(
-        "HTTP request failed: %s %s",
-        response.status_code,
-        response.text,
-        exc_info=True,
-        )
-        raise
+    max_retries = 3
+    backoff = 2  # seconds
 
-    data = response.json()
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
 
-    exch_rate = round(float(data["rates"]["INR"]), 2)
+            data = response.json()
 
-    logger.info("Fetched exchange rate info from Frankfurter API for %s | %f",date,exch_rate)
+            if not data:
+                raise ValueError("Empty response")
 
-    return exch_rate
+            exch_rate = round(float(data[0]["rate"]), 2)
+
+            logger.info(
+                "Fetched exchange rate for %s | %f",
+                date,
+                exch_rate,
+            )
+
+            return exch_rate
+
+        except requests.exceptions.ReadTimeout:
+            logger.warning(
+                "Timeout while fetching rate for %s (attempt %d)",
+                date,
+                attempt + 1,
+            )
+
+        except requests.HTTPError:
+            logger.error(
+                "HTTP error: %s %s",
+                response.status_code,
+                response.text,
+                exc_info=True,
+            )
+            raise
+
+        # retry delay
+        time.sleep(backoff * (attempt + 1))
+
+    # after all retries fail
+    logger.error("Failed to fetch exchange rate after retries for %s", date)
+    raise RuntimeError(f"API timeout for date {date}")

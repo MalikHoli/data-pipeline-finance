@@ -80,7 +80,7 @@ MONTH_INDEX = {
     "nov": 11,
     "dec": 12,
 }
-RUN_MODE = "delta"
+RUN_MODE = "full"
 BACKUP_BEFORE_TRUNCATE = False
 
 #-------------------------------------------------------------
