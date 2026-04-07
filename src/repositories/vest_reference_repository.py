@@ -41,6 +41,7 @@ class VestReferenceRepository:
         SELECT amount
         FROM vest_detailed_statement
         WHERE activity='CDEP' AND trade_date BETWEEN %(start_date)s AND %(end_date)s
+        ORDER BY trade_date ASC
         """
         return pd.read_sql(
             query,

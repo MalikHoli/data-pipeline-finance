@@ -3,7 +3,6 @@ import pandas as pd
 from typing import Final
 
 from src.common.logging import logger
-from src.parsers.pdf.vest_statement_period import extract_vest_statement_period
 
 # =========================
 # Constants (schema safety)
