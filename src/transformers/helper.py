@@ -41,6 +41,8 @@ VEST_RAW_TRANSACTIONS_REQUIRED_COLUMNS_LIST: Final = [
 ]
 VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_NUMERIC: Final = ['amount', 'quantity', 'price']
 VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
+VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE: Final = ['date']
+VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC: Final = ['balance']
 VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC: Final = ['buy_exch_rate', 'inr_amount']
 
 #=============================================================
@@ -59,6 +61,21 @@ def _convert_vest_date_for_postgres_posting(
         .dt.normalize() #removes time component (sets to midnight)
     )
 
+#=============================================================
+def _convert_vest_month_end_date_for_postgres_posting(
+        series: pd.Series,
+) -> pd.Series:
+    """
+    Convert vest statement default date format (MM/DD/YYYY) to suitable for postgres (YYYY-MM-DD)
+    """
+    return(
+        pd.to_datetime(
+            series,
+            format=POSTGRES_OUTPUT_DATE_FORMAT,
+            errors="coerce",
+        )
+        .dt.normalize() #removes time component (sets to midnight)
+    )
 #=============================================================
 def _derive_month_end_date_for_gsheet_posting(
         month_year: str,

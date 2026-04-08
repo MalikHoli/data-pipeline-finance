@@ -9,8 +9,11 @@ from src.transformers.helper import (
     _allocate_wallet_amount_to_transactions,
     _assign_buy_exchange_rates_with_inr_amount,
     _clean_convert_currency_column_to_numeric,
+    _convert_vest_month_end_date_for_postgres_posting,
     MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
     VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC,
+    VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE,
+    VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC
 )
 
 # =========================
@@ -75,8 +78,7 @@ def transform_vest_transactions(
             month_year,
         )
 
-        return (
-            pd.DataFrame(
+        vest_month_end_balance_df = pd.DataFrame(
             [
                 [
                     current_statement_month_last_date,
@@ -84,7 +86,20 @@ def transform_vest_transactions(
                 ]
             ],
                 columns=MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
-        ), # returning month_end_balance of previous month
+        )
+
+        vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE] = (
+            vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE]
+            .apply(_convert_vest_month_end_date_for_postgres_posting)
+        )
+
+        vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC] = (
+        vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC]
+        .apply(_clean_convert_currency_column_to_numeric)
+    )
+
+        return (
+            vest_month_end_balance_df, # returning month_end_balance of previous month
             pd.DataFrame(), # returning empty transformed df
         )
         
@@ -183,6 +198,17 @@ def transform_vest_transactions(
     ],
           columns=MONTH_END_BLALANCE_POSTGRES_TABLE_COLUMN_NAMES,
     )
+
+    vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE] = (
+        vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE]
+        .apply(_convert_vest_month_end_date_for_postgres_posting)
+    )
+
+    vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC] = (
+        vest_month_end_balance_df[VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC]
+        .apply(_clean_convert_currency_column_to_numeric)
+    )
+
 
     logger.info(
         "vest month end balance df prepared | rows=%d",
