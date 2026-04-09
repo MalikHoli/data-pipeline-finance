@@ -58,9 +58,37 @@ class VestReferenceRepository:
         end_date: str,
     ) -> pd.DataFrame:
         query = """
-        SELECT exchange_rate_1_usd_to_inr FROM vest_usd_to_inr_deposit_exch_rate
-        WHERE deposit_date BETWEEN %(start_date)s AND %(end_date)s
-        ORDER BY deposit_date ASC
+        SELECT 
+            vd.trade_date,
+            vd.amount,
+            COALESCE(
+                ve.exchange_rate_1_usd_to_inr,
+                ve_fallback.exchange_rate_1_usd_to_inr
+            ) AS exchange_rate_1_usd_to_inr
+
+        FROM vest_detailed_statement vd
+
+        -- exact match
+        LEFT JOIN vest_usd_to_inr_deposit_exch_rate ve
+            ON vd.trade_date = ve.deposit_date
+            AND vd.amount = ve.usd_deposit
+
+        -- fallback: look back up to 3 days
+        LEFT JOIN LATERAL (
+            SELECT exchange_rate_1_usd_to_inr
+            FROM vest_usd_to_inr_deposit_exch_rate vef
+            WHERE vef.usd_deposit = vd.amount
+            AND vef.deposit_date < vd.trade_date
+            AND vef.deposit_date >= vd.trade_date - INTERVAL '3 days'
+            ORDER BY vef.deposit_date DESC
+            LIMIT 1
+        ) ve_fallback 
+        ON ve.exchange_rate_1_usd_to_inr IS NULL
+
+        WHERE vd.activity = 'CDEP'
+        AND vd.trade_date BETWEEN %(start_date)s AND %(end_date)s
+
+        ORDER BY vd.trade_date ASC
         """
         return pd.read_sql(
             query,
@@ -79,15 +107,43 @@ class VestReferenceRepository:
         end_date: str,
     ) -> pd.DataFrame:
         query = """
-        SELECT exchange_rate_1_usd_to_inr
+        SELECT trade_date, amount, exchange_rate_1_usd_to_inr
         FROM (
-            SELECT deposit_date, exchange_rate_1_usd_to_inr
-            FROM vest_usd_to_inr_deposit_exch_rate
-            WHERE deposit_date BETWEEN %(start_date)s AND %(end_date)s
+            SELECT 
+                vd.trade_date,
+                vd.amount,
+                COALESCE(
+                    ve.exchange_rate_1_usd_to_inr,
+                    ve_fallback.exchange_rate_1_usd_to_inr
+                ) AS exchange_rate_1_usd_to_inr
+            FROM vest_detailed_statement vd
+
+            LEFT JOIN vest_usd_to_inr_deposit_exch_rate ve
+                ON vd.trade_date = ve.deposit_date
+                AND vd.amount = ve.usd_deposit
+
+            LEFT JOIN LATERAL (
+                SELECT exchange_rate_1_usd_to_inr
+                FROM vest_usd_to_inr_deposit_exch_rate vef
+                WHERE vef.usd_deposit = vd.amount
+                AND vef.deposit_date < vd.trade_date
+                AND vef.deposit_date >= vd.trade_date - INTERVAL '3 days'
+                ORDER BY vef.deposit_date DESC
+                LIMIT 1
+            ) ve_fallback 
+            ON ve.exchange_rate_1_usd_to_inr IS NULL
+
+            WHERE vd.activity = 'CDEP'
+            AND vd.trade_date BETWEEN %(start_date)s AND %(end_date)s
+
             UNION ALL
-            SELECT deposit_date, exchange_rate_1_usd_to_inr
+
+            SELECT 
+                deposit_date AS trade_date,
+                usd_deposit AS amount,
+                exchange_rate_1_usd_to_inr
             FROM (
-                SELECT deposit_date, exchange_rate_1_usd_to_inr
+                SELECT deposit_date, usd_deposit, exchange_rate_1_usd_to_inr
                 FROM vest_usd_to_inr_deposit_exch_rate
                 WHERE deposit_date = (
                     SELECT COALESCE(
@@ -107,7 +163,8 @@ class VestReferenceRepository:
                 LIMIT 1
             ) t
         ) AS combined_rates
-        ORDER BY deposit_date ASC;
+
+        ORDER BY trade_date ASC
         """
         return pd.read_sql(
             query,

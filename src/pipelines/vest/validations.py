@@ -212,7 +212,7 @@ def _compute_segment_sums(
     if not month_end_balance_df.empty and month_end_balance_df.loc[0, "balance"] > 0 and exch_rate:
         balance = month_end_balance_df.loc[0, "balance"]
         rate = exch_rate[-1]
-        segment_sums[-1] = segment_sums[-1] + int(balance * Decimal(str(rate)))
+        segment_sums[-1] = segment_sums[-1] + int(Decimal(str(balance)) * Decimal(str(rate)))
 
     return segment_sums
 
