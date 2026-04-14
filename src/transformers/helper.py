@@ -44,7 +44,23 @@ VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
 VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE: Final = ['date']
 VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC: Final = ['balance']
 VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC: Final = ['buy_exch_rate', 'inr_amount']
+INDMONEY_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_REGEX: Final = r"/INDMoney/|INDMoney US\nSto"
 
+#=============================================================
+def _convert_bank_statement_for_postgres_posting(
+        series: pd.Series,
+) -> pd.Series:
+    """
+    Convert vest statement default date format (DD/MM/YYYY) to suitable for postgres (YYYY-MM-DD)
+    """
+    return(
+        pd.to_datetime(
+            series,
+            format=GSHEET_OUTPUT_DATE_FORMAT,
+            errors="coerce",
+        )
+        .dt.normalize() #removes time component (sets to midnight)
+    )
 #=============================================================
 def _convert_vest_date_for_postgres_posting(
         series: pd.Series,

@@ -80,7 +80,6 @@ def transform_vest_holdings(
     # ---------------------------------------------------------------------
     # fetching usd to inr exchange rate from API and inserting as column
     # ---------------------------------------------------------------------
-    # build the helper function for _fetch_usd_to_inr_exch_rate_from_Frankfurter_API
     usd_to_inr_exch_rate = _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(vest_holding_date.strftime(DATE_FORMAT_FOR_FRANKFURTER_API))
 
     vest_holdings_transformed_df["exch_rate"] = usd_to_inr_exch_rate

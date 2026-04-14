@@ -77,23 +77,35 @@ def extract_indmoney_detailed_transactions(
 
                         # Skip Journal Entry(Cash) rows (robust whitespace handling)
                         entry_type = inc_row[1]
-                        if entry_type:
-                            normalized = re.sub(r'\s+', '', entry_type)
-                            if normalized == 'JournalEntry(Cash)':
-                                continue
+                        normalized = re.sub(r'\s+', '', entry_type) if entry_type else ""
+                        
+                        if normalized == 'JournalEntry(Cash)':
+                        # Special mapping for cash entries
+                            mapped_row = [
+                                inc_row[0],                 # Trade Date
+                                inc_row[1],                 # Entry Type
+                                'deposit',                  # Side
+                                'INDMONEY_DEPO',            # Symbol
+                                inc_row[3],                 # Description
+                                Decimal('1.000000'),        # Quantity
+                                Decimal('1.000000'),        # Price
+                                inc_row[4],                 # Amount
+                                '$ --'                      # Commission
+                            ]
 
-                        # Map income schema → transaction schema
-                        mapped_row = [
-                            inc_row[0],                 # Trade Date
-                            inc_row[1],                 # Entry Type
-                            'div',                      # Side
-                            inc_row[2],                 # Symbol
-                            inc_row[3],                 # Description
-                            Decimal('1.000000'),        # Quantity
-                            Decimal('1.000000'),        # Price
-                            inc_row[4],                 # Amount (Net Amt)
-                            '$ --'                      # Commission
-                        ]
+                        else:
+                            # Map dividend schema → transaction schema
+                            mapped_row = [
+                                inc_row[0],                 # Trade Date
+                                inc_row[1],                 # Entry Type
+                                'div',                      # Side
+                                inc_row[2],                 # Symbol
+                                inc_row[3],                 # Description
+                                Decimal('1.000000'),        # Quantity
+                                Decimal('1.000000'),        # Price
+                                inc_row[4],                 # Amount (Net Amt)
+                                '$ --'                      # Commission
+                            ]
 
                         all_transactions.append(mapped_row)
 
