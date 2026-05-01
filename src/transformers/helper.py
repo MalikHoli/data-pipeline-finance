@@ -51,7 +51,7 @@ def _convert_bank_statement_for_postgres_posting(
         series: pd.Series,
 ) -> pd.Series:
     """
-    Convert vest statement default date format (DD/MM/YYYY) to suitable for postgres (YYYY-MM-DD)
+    Convert bank statement default date format (DD/MM/YYYY) to suitable for postgres (YYYY-MM-DD)
     """
     return(
         pd.to_datetime(
