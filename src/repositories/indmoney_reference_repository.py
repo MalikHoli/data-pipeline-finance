@@ -66,4 +66,5 @@ class IndmoneyReferenceRepository:
         return pd.read_sql(
             query,
             self._read_engine,
+            parse_dates=["deposit_date"],
         )
