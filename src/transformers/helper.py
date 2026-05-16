@@ -44,8 +44,25 @@ VEST_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
 VEST_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE: Final = ['date']
 VEST_MONTH_END_BALANCE_CONVERT_TO_NUMERIC: Final = ['balance']
 VEST_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC: Final = ['buy_exch_rate', 'inr_amount']
-INDMONEY_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_REGEX: Final = r"/INDMoney/|INDMoney US\nSto"
 
+
+INDMONEY_DEPOSIT_INDICATOR_TRANSACTION_REMARKS_REGEX: Final = r"/INDMoney/|INDMoney US\nSto"
+INDMONEY_RAW_TRANSACTIONS_REQUIRED_COLUMNS_LIST: Final = [
+    "trade_date",
+    "entry_type",
+    "side",          # parser name; renamed → "activity" in transformer
+    "symbol",
+    "description",
+    "quantity",
+    "price",
+    "amount",
+    "commission",
+]
+INDMONEY_STATEMENT_TRANSACTIONS_RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Final = {
+    "side": "activity",
+}
+INDMONEY_STATEMENT_TRANSACTIONS_CONVERT_TO_NUMERIC: Final = ['amount', 'quantity', 'price', 'commission']
+INDMONEY_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
 #=============================================================
 def _convert_bank_statement_for_postgres_posting(
         series: pd.Series,
@@ -165,6 +182,7 @@ def _clean_convert_currency_column_to_numeric(
         .str.replace(",", "", regex=False)
         .str.replace("₹", "", regex=False)
         .str.replace("$", "", regex=False)
+        .str.replace(r"\s+", "", regex=True) # -\n150.00 -> -150.00 (applicable for indmoney)
         .str.strip()
         .str.replace(
             r"^\((.*)\)$",     # Match values fully wrapped in parentheses

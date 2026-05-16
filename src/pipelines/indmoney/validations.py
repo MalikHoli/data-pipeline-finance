@@ -28,6 +28,16 @@ MUST_HAVE_NUMERIC_COLUMNS_INDMONEY_EXCHANGE_RATE_TRANSFORMER: Final = (
     "inr_deposit",
 )
 
+MUST_HAVE_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER: Final = {
+    "trade_date", "entry_type", "activity", "symbol", "description",
+    "quantity", "price", "amount", "commission",
+}
+MUST_HAVE_STRING_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER: Final = (
+    "entry_type", "activity", "symbol", "description",
+)
+MUST_HAVE_NUMERIC_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER: Final = (
+    "quantity", "price", "amount", "commission",
+)
 
 def validate_indmoney_investment_exchange_rate_df(
         df: pd.DataFrame
@@ -50,6 +60,41 @@ def validate_indmoney_investment_exchange_rate_df(
                 raise ValueError(f"Column '{col}' must be numeric dtype")
         
 
+def validate_indmoney_raw_transactions_df(df: pd.DataFrame) -> None:
+    """
+    Validate the transformed indmoney raw transaction dataframe before postgres persistence
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+        Output dataframe from transform_indmoney_raw_transactions
+
+    Returns
+    -------
+    None
+        Raises ValueError if any validation check fails
+    """
+    if df.empty:
+        logger.error("Transformed indmoney raw transaction dataframe is empty")
+        raise ValueError("Transformed indmoney raw transaction dataframe is empty")
+
+    missing_cols = MUST_HAVE_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER - set(df.columns)
+    if missing_cols:
+        logger.error("Missing required columns in transformed raw transaction dataframe: %s", missing_cols)
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    if not is_datetime64_any_dtype(df["trade_date"]):
+        raise ValueError("Column 'trade_date' must be datetime dtype")
+
+    for col in MUST_HAVE_STRING_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER:
+        if not is_string_dtype(df[col]):
+            raise ValueError(f"Column '{col}' must be string dtype")
+
+    for col in MUST_HAVE_NUMERIC_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER:
+        if not is_numeric_dtype(df[col]):
+            raise ValueError(f"Column '{col}' must be numeric dtype")
+        
+        
 # def validate_vest_raw_transactions_df(
 #         df: pd.DataFrame
 # ) -> None:
