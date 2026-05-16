@@ -19,6 +19,9 @@ _ALLOWED_FULL_LOAD_TABLES = {
     "vest_month_end_balance",
     "vest_summary_statement",
     "vest_detailed_statement_transformed",
+    "indmoney_deposits_bank_statement",
+    "indmoney_deposits_indmoney_statement",
+    "indmoney_usd_to_inr_deposit_exch_rate",
 }
 
 
