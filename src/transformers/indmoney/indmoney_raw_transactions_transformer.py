@@ -26,8 +26,8 @@ def transform_indmoney_raw_transactions(
         Final indmoney raw transactions transformed dataframe ready for persistence or analytics
     """
     if indmoney_raw_transactions_parsed_df.empty:
-        logger.error("No transactions parsed from indmoney statement")
-        raise ValueError("indmoney statement raw transaction parsed df can't be empty")
+        logger.warning("No transactions found from indmoney statement")
+        return pd.DataFrame()
 
     logger.info("Starting indmoney raw transaction transformer which cleans and format columns as per postgres schema")
 

@@ -75,8 +75,8 @@ def validate_indmoney_raw_transactions_df(df: pd.DataFrame) -> None:
         Raises ValueError if any validation check fails
     """
     if df.empty:
-        logger.error("Transformed indmoney raw transaction dataframe is empty")
-        raise ValueError("Transformed indmoney raw transaction dataframe is empty")
+        logger.warning("Transformed indmoney raw transaction dataframe is empty")
+        return
 
     missing_cols = MUST_HAVE_COLUMNS_INDMONEY_RAW_TRANSACTION_TRANSFORMER - set(df.columns)
     if missing_cols:

@@ -3,9 +3,6 @@ from pathlib import Path
 from src.parsers.pdf.indmoney_statement_transactions import extract_indmoney_detailed_transactions
 from src.parsers.pdf.indmoney_statement_period import extract_indmoney_statement_period
 from src.transformers.indmoney.indmoney_deposits_from_indmoney_statement_transformer import transform_indmoney_statement_to_get_indmoney_deposits
-from src.parsers.pdf.bank_statement import extract_bank_table_transactions
-from src.parsers.pdf.bank_statement_period import extract_bank_statement_period
-from src.transformers.indmoney.indmoney_deposits_from_bank_statement_transformer import transform_bank_statement_to_get_indmoney_deposits
 from src.loaders.postgres.indmoney.indmoney_deposits_from_indmoney_statement_loader import load_indmoney_deposits_from_indmoney_statement_transactions
 
 from src.common.db import get_write_engine
@@ -31,7 +28,7 @@ def run(
     backup_before_truncate : bool
         Whether to create a timestamped backup table before truncate in full mode.
     """
-    logger.info("Starting vest holdings pipeline")
+    logger.info("Starting indmoney deposit transactions pipeline")
 
     month_year = extract_indmoney_statement_period(pdf_path)
 
