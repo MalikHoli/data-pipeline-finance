@@ -63,6 +63,10 @@ INDMONEY_STATEMENT_TRANSACTIONS_RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT: Fina
 }
 INDMONEY_STATEMENT_TRANSACTIONS_CONVERT_TO_NUMERIC: Final = ['amount', 'quantity', 'price', 'commission']
 INDMONEY_STATEMENT_TRANSACTIONS_CONVERT_TO_POSTGRES_DATE: Final = ['trade_date']
+
+INDMONEY_STATEMENT_TRANSACTIONS_TRANSFORMER_CONVERT_TO_NUMERIC: Final = ['buy_exch_rate', 'inr_amount']
+INDMONEY_MONTH_END_BALANCE_CONVERT_TO_POSTGRES_DATE: Final = ['date']
+INDMONEY_MONTH_END_BALANCE_CONVERT_TO_NUMERIC: Final = ['balance']
 #=============================================================
 def _convert_bank_statement_for_postgres_posting(
         series: pd.Series,
