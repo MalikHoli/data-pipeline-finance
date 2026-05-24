@@ -88,7 +88,7 @@ def transform_indmoney_holdings(
     # -----------------------------------------
     indmoney_holding_date = _derive_month_end_date_for_postgres_posting(month_year)
 
-    logger.info("inserting %s as date column for vest holdings period %s",indmoney_holding_date,month_year)
+    logger.info("inserting %s as date column for indmoney holdings period %s",indmoney_holding_date,month_year)
 
     indmoney_holdings_transformed_df["date"] = indmoney_holding_date
 

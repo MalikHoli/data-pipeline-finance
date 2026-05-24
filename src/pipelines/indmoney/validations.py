@@ -76,6 +76,28 @@ MUST_HAVE_BOOL_COLUMNS_INDMONEY_TRANSFORMED_TRANSACTION: Final = (
     "crossover_flag",
 )
 
+MUST_HAVE_COLUMNS_INDMONEY_HOLDINGS: Final = {
+    "symbol",
+    "quantity",
+    "unit_cost",
+    "total_cost",
+    "market_price",
+    "market_value",
+    "gain",
+    "date",
+    "exch_rate",
+}
+
+MUST_HAVE_NUMERIC_COLUMNS_INDMONEY_HOLDINGS: Final = (
+    "quantity",
+    "unit_cost",
+    "total_cost",
+    "market_price",
+    "market_value",
+    "gain",
+    "exch_rate",
+)
+
 def validate_indmoney_investment_exchange_rate_df(
         df: pd.DataFrame
 ) -> None:
@@ -191,7 +213,11 @@ def validate_indmoney_month_end_and_transformed_transactions(
     if transformed_transaction_df.loc[transformed_transaction_df["free_flag"], "inr_amount"].sum() != 0:
         raise ValueError("Sum of inr_amount for free_flag=True must be 0")
 
-    exch_rate = credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist()
+    exch_rate = (
+        credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist()
+        if not credit_amounts_exchg_rate_df.empty
+        else []
+    )
     expected_crossover_count = max(len(exch_rate) - 1, 0)
     actual_crossover_count = int(transformed_transaction_df["crossover_flag"].sum())
 
@@ -236,3 +262,28 @@ def validate_indmoney_month_end_and_transformed_transactions(
                 "Segmented INR amount reconciliation failed. "
                 f"actual={segment_sums}, expected={expected}, tolerance={tolerance}"
             )
+    
+def validate_indmoney_holdings_df(df: pd.DataFrame) -> None:
+    """Validate transformed indmoney holdings dataframe schema, quality, and dtypes."""
+    if df.empty:
+        logger.error("Transformed indmoney holdings dataframe is empty")
+        raise ValueError("Transformed indmoney holdings dataframe is empty")
+
+    missing_cols = MUST_HAVE_COLUMNS_INDMONEY_HOLDINGS - set(df.columns)
+    if missing_cols:
+        logger.error("Missing required columns in transformed holdings dataframe: %s", missing_cols)
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    if not df.notna().all().all():
+        logger.error("Transformed indmoney holdings dataframe contains NA values")
+        raise ValueError("Transformed indmoney holdings dataframe contains NA values")
+
+    if not is_datetime64_any_dtype(df["date"]):
+        raise ValueError("Column 'date' must be datetime dtype")
+
+    if not is_string_dtype(df["symbol"]):
+        raise ValueError("Column 'symbol' must be string dtype")
+
+    for col in MUST_HAVE_NUMERIC_COLUMNS_INDMONEY_HOLDINGS:
+        if not is_numeric_dtype(df[col]):
+            raise ValueError(f"Column '{col}' must be numeric dtype")

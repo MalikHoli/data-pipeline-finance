@@ -28,7 +28,7 @@ def run(
     backup_before_truncate : bool
         Whether to create a timestamped backup table before truncate in full mode.
     """
-    logger.info("Starting vest holdings pipeline")
+    logger.info("Starting indmoney deposits from bank transactions pipeline")
 
     month_year = extract_bank_statement_period(pdf_path)
 

@@ -39,7 +39,7 @@ def load_investment_amount_exch_rate(
     -------
     None
     """
-    logger.info("Starting vest transaction amount exchange rate loader")
+    logger.info("Starting indmoney deposit amount exchange rate loader")
 
     _loading_to_postgres(
         indmoney_investment_amount_exch_rate_computed_df,

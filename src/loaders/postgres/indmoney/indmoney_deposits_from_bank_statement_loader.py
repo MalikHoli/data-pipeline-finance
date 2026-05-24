@@ -18,7 +18,7 @@ def load_indmoney_deposits_from_bank_statement_transactions(
         backup_before_truncate: bool = False,
 ) -> None:
     """
-    loads the parsed vest pdf to postgres    
+    loads the parsed indmoney pdf to postgres    
     
     Parameters
     ----------
@@ -38,7 +38,7 @@ def load_indmoney_deposits_from_bank_statement_transactions(
     -------
     None
     """
-    logger.info("Starting vest raw transaction loader")
+    logger.info("Starting indmoney deposits from bank statement loader")
     
     _loading_to_postgres(
         indmoney_deposits_bank_statement_df,

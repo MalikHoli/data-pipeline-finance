@@ -27,7 +27,13 @@ def transform_indmoney_raw_transactions(
     """
     if indmoney_raw_transactions_parsed_df.empty:
         logger.warning("No transactions found from indmoney statement")
-        return pd.DataFrame()
+        # Return empty df with output schema so downstream code can safely
+        # access columns (e.g. filter on "activity") without KeyError.
+        output_columns = [
+            INDMONEY_STATEMENT_TRANSACTIONS_RENAME_COLUMNS_AS_PER_POSTGRES_SCHEMA_DICT.get(c, c)
+            for c in INDMONEY_RAW_TRANSACTIONS_REQUIRED_COLUMNS_LIST
+        ]
+        return pd.DataFrame(columns=output_columns)
 
     logger.info("Starting indmoney raw transaction transformer which cleans and format columns as per postgres schema")
 

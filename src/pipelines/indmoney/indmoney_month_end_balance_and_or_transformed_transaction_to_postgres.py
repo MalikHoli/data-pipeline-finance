@@ -79,14 +79,12 @@ def run(
     )
 
     if prev_month_end_indmoney_balance_df.empty:
-        logger.error(
-            "No data fetched from 'indmoney_month_end_balance' | Date = %s",
+        logger.warning(
+            "No previous month-end balance found for Date = %s. "
+            "Defaulting to 0.0 (bootstrap: first statement ever).",
             current_statement_previous_month_last_date,
         )
-        raise ValueError(
-            "There should not be any period missing the month end balance | check for Date = %s",
-            current_statement_previous_month_last_date,
-        )
+        prev_month_end_indmoney_balance_df = pd.DataFrame({"balance": [0.0]})
 
     if len(prev_month_end_indmoney_balance_df) > 1:
         logger.error(

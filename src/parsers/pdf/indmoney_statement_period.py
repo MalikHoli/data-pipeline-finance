@@ -40,5 +40,5 @@ def extract_indmoney_statement_period(
 
     month_year = str(month)+'/'+str(year)
 
-    logger.info("This vest statement is for %s",month_year)
+    logger.info("This indmoney statement is for %s",month_year)
     return month_year

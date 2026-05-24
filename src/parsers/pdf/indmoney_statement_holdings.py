@@ -25,7 +25,7 @@ def extract_indmoney_holdings(
         logger.error("Pdf path is not provided")
         raise ValueError("Pdf path is not provided")
 
-    logger.info("parsing vest holdings for %s",month_year)
+    logger.info("parsing indmoney holdings for %s",month_year)
 
     #=============================
     # Initializing variables

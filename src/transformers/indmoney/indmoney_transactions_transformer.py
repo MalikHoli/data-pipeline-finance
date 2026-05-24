@@ -106,9 +106,11 @@ def transform_indmoney_transactions(
 
     indmoney_credit_amount_list.extend(curr_month_usd_deposits_df["usd_deposit"].tolist())
 
-    indmoney_credit_exchg_rate_list.extend(
-        credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist()
-    )
+    # Guard credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"] behind if not credit_amounts_exchg_rate_df.empty
+    if not credit_amounts_exchg_rate_df.empty:
+        indmoney_credit_exchg_rate_list.extend(
+            credit_amounts_exchg_rate_df["exchange_rate_1_usd_to_inr"].tolist()
+        )
 
     # ---------------------------------------------------------------
     # Checkpoint: credit amounts must align 1:1 with exchange rates
@@ -129,9 +131,11 @@ def transform_indmoney_transactions(
             len(indmoney_credit_amount_list),
         )
 
+    indmoney_buy_transactions_df["amount"] = indmoney_buy_transactions_df["amount"] * (-1)
+
     if (indmoney_buy_transactions_df["amount"] < 0).any():
         logger.warning(
-            "Negative buy amount detected in indmoney statement | Period = %s",
+            "Negative buy amount detected after sign flip — check raw statement | Period = %s",
             month_year,
         )
 

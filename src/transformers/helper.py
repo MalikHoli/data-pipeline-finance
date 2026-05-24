@@ -705,14 +705,25 @@ def _fetch_usd_to_inr_exch_rate_from_Frankfurter_API(
                 attempt + 1,
             )
 
-        except requests.HTTPError:
-            logger.error(
-                "HTTP error: %s %s",
-                response.status_code,
-                response.text,
-                exc_info=True,
+        # except requests.HTTPError:
+        #     logger.error(
+        #         "HTTP error: %s %s",
+        #         response.status_code,
+        #         response.text,
+        #         exc_info=True,
+        #     )
+        #     raise
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code < 500:
+                # 4xx client errors — no point retrying
+                logger.error("Client HTTP error: %s", e.response.status_code, exc_info=True)
+                raise
+            logger.warning(
+                "Server HTTP error %s for %s (attempt %d), retrying...",
+                e.response.status_code if e.response is not None else "unknown",
+                date,
+                attempt + 1,
             )
-            raise
 
         # retry delay
         time.sleep(backoff * (attempt + 1))
