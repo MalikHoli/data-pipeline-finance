@@ -58,7 +58,7 @@ logger.addHandler(file_handler)
 # -------------------------------------------------------------------
 INPUT_DIR = Path("data/inbound/bank_statement")
 FILE_PATTERN = "OpTransactionHistory_*"
-RUN_MODE = "full"
+RUN_MODE = "delta"
 BACKUP_BEFORE_TRUNCATE = False
 
 def main() -> None:

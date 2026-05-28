@@ -22,6 +22,10 @@ _ALLOWED_FULL_LOAD_TABLES = {
     "indmoney_deposits_bank_statement",
     "indmoney_deposits_indmoney_statement",
     "indmoney_usd_to_inr_deposit_exch_rate",
+    "indmoney_summary_statement",
+    "indmoney_month_end_balance",
+    "indmoney_detailed_statement",
+    "indmoney_detailed_statement_transformed",
 }
 
 

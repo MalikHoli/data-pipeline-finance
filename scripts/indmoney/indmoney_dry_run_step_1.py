@@ -61,13 +61,6 @@ def _collect_indmoney_files() -> list[Path]:
     return files
 
 
-def _sort_by_period(path: Path) -> tuple[int, int]:
-    """Sort indmoney PDFs chronologically by reading period from each file."""
-    month_year = extract_indmoney_statement_period(path)
-    month_str, year_str = month_year.split("/")
-    return (int(year_str), int(month_str))
-
-
 def main() -> None:
     bank_files     = _collect_bank_files()
     indmoney_files = _collect_indmoney_files()
